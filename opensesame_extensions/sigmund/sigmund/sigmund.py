@@ -1,8 +1,10 @@
 import sys
 import json
+import traceback
 from pathlib import Path
 from multiprocessing import Process, Queue
-from qtpy.QtWidgets import QDockWidget, QWidget, QVBoxLayout, QLabel
+from qtpy.QtWidgets import QDockWidget, QWidget, QVBoxLayout, QLabel, \
+    QApplication
 from qtpy.QtCore import Qt, QTimer, Signal
 from libopensesame.py3compat import *
 from libopensesame.oslogging import oslogger
@@ -120,7 +122,8 @@ class Sigmund(BaseExtension):
             oslogger.error(f"Failed to start Sigmund server: {e}")
             self._state = 'failed'
 
-    def on_user_message_sent(self, text):
+    def on_user_message_sent(self, text, workspace_content=None,
+                             workspace_language=None, retry=1):
         """
         Called when ChatWidget tells us the user has sent a message.
         We package it as JSON and send it to the server. We also disable the
@@ -128,8 +131,10 @@ class Sigmund(BaseExtension):
         """
         if not text or not self._to_server_queue:
             return
-        workspace_content, workspace_language = self._workspace_manager.get(
-            self._item)
+        self._retry = retry
+        if workspace_content is None:
+            workspace_content, workspace_language = \
+                self._workspace_manager.get(self._item)
         user_json = {
             "action": "user_message",
             "message": text,
@@ -181,7 +186,6 @@ class Sigmund(BaseExtension):
         Parses incoming data from the client. If it's valid JSON with
         action = "ai_message", we treat it as an AI response.
         """
-        import json
         try:
             data = json.loads(raw_msg)
         except json.JSONDecodeError:
@@ -203,15 +207,36 @@ class Sigmund(BaseExtension):
             workspace_language = data.get("workspace_language", "markdown")
             self._chat_widget.append_message("ai_message", message_text)
             self._chat_widget.setEnabled(True)
-            self._workspace_manager.set(workspace_content, workspace_language)
-        else:
-            # Unknown action
-            self.extension_manager.fire(
-                'notify',
-                message=_("Unknown action from client: {}").format(action),
-                category='info',
-                timeout=10000
-            )
+            try:
+                self._workspace_manager.set(workspace_content,
+                                            workspace_language)
+            except Exception as e:
+                # When an error occurs, we pass this back to Sigmund as a
+                # user message to give Sigmund a chance to try again.
+                msg = f'''The following error occurred when I tried to use the workspace content:
+                
+```
+{traceback.format_exc()}
+```
+'''
+                    
+                self._chat_widget.append_message('user_message', msg)
+                if not self._retry:
+                    self._chat_widget.append_message('ai_message',
+                        _('Maximum number of attempts exceeded.'))
+                else:
+                    QApplication.processEvents()
+                    self.on_user_message_sent(msg, workspace_content,
+                                              workspace_language,
+                                              retry=self._retry - 1)
+            return
+        # Unknown action
+        self.extension_manager.fire(
+            'notify',
+            message=_("Unknown action from client: {}").format(action),
+            category='info',
+            timeout=10000
+        )
 
     def icon(self):
         return str(Path(__file__).parent / 'sigmund.png')
