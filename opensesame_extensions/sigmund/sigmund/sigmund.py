@@ -142,7 +142,6 @@ class Sigmund(BaseExtension):
             "workspace_language": workspace_language
         }
         self._chat_widget.setEnabled(False)
-
         send_str = json.dumps(user_json)
         self._to_server_queue.put(send_str)
 
@@ -155,8 +154,11 @@ class Sigmund(BaseExtension):
             return
         while not self._to_main_queue.empty():
             msg = self._to_main_queue.get()
-            oslogger.debug(f"Message from client or server notice: {msg}")
-            if msg == 'FAILED_TO_START':
+            if not isinstance(msg, str):
+                continue
+            if msg.startswith('[DEBUG]'):
+                oslogger.info(msg)
+            elif msg.startswith('FAILED_TO_START'):
                 self._state = 'failed'
                 self.refresh_dockwidget_ui()
             elif msg == "CLIENT_CONNECTED":
