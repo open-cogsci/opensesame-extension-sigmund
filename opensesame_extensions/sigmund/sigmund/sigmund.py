@@ -164,6 +164,7 @@ class Sigmund(BaseExtension):
             elif msg == "CLIENT_CONNECTED":
                 self._state = 'connected'
                 self.refresh_dockwidget_ui()
+                self._chat_widget.clear_messages()
                 self.extension_manager.fire(
                     'notify',
                     message=_("A client has connected to Sigmund!"),
@@ -191,19 +192,18 @@ class Sigmund(BaseExtension):
         try:
             data = json.loads(raw_msg)
         except json.JSONDecodeError:
-            # Not JSON; just ignore or show it as a notification
-            self.extension_manager.fire(
-                'notify',
-                message=_("Non-JSON message from client: {}").format(raw_msg),
-                category='info',
-                timeout=10000
-            )
-            return
-        if isinstance(data, dict):
-            action = data.get("action", None)
-        else:
             action = None
-        if action == "ai_message":
+        else:
+            if isinstance(data, dict):
+                action = data.get("action", None)
+            else:
+                action = None
+        if action == 'clear_messages':
+            self._chat_widget.clear_messages()
+        elif action == 'user_message':
+            message_text = data.get("message", "")
+            self._chat_widget.append_message("user_message", message_text)            
+        elif action == "ai_message":
             message_text = data.get("message", "")
             workspace_content = data.get("workspace_content", "")
             workspace_language = data.get("workspace_language", "markdown")
@@ -227,18 +227,11 @@ class Sigmund(BaseExtension):
                     self._chat_widget.append_message('ai_message',
                         _('Maximum number of attempts exceeded.'))
                 else:
-                    QApplication.processEvents()
                     self.on_user_message_sent(msg, workspace_content,
                                               workspace_language,
                                               retry=self._retry - 1)
-            return
-        # Unknown action
-        self.extension_manager.fire(
-            'notify',
-            message=_("Unknown action from client: {}").format(action),
-            category='info',
-            timeout=10000
-        )
-
+        else:
+            oslogger.error(f'invalid incoming message: {raw_msg}')
+    
     def icon(self):
         return str(Path(__file__).parent / 'sigmund.png')

@@ -6,7 +6,8 @@ from qtpy.QtWidgets import (
     QLabel,
     QScrollArea,
     QPlainTextEdit,
-    QSizePolicy
+    QSizePolicy,
+    QApplication
 )
 from qtpy.QtCore import Signal, Qt, QEvent, QSize
 from libqtopensesame.widgets.base_widget import BaseWidget
@@ -177,6 +178,7 @@ class ChatWidget(BaseWidget):
         self._chat_layout.addWidget(bubble_widget)
         self._chat_container.setFixedWidth(self._scroll_area.viewport().width())
         self._scroll_to_bottom()
+        QApplication.processEvents()
 
     def append_message(self, msg_type, text):
         """
@@ -184,3 +186,13 @@ class ChatWidget(BaseWidget):
         e.g. for an AI reply.
         """
         self._add_message_bubble(text, msg_type)
+
+    def clear_messages(self):
+        """
+        Removes every message bubble from the chat layout.
+        """
+        while self._chat_layout.count():
+            item = self._chat_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
