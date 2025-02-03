@@ -1,10 +1,12 @@
 import sys
+import os
 import json
 import traceback
 from pathlib import Path
 from multiprocessing import Process, Queue
 from qtpy.QtWidgets import QDockWidget, QWidget, QVBoxLayout, QLabel, \
     QApplication
+from qtpy.QtGui import QPixmap
 from qtpy.QtCore import Qt, QTimer, Signal
 from libopensesame.py3compat import *
 from libopensesame.oslogging import oslogger
@@ -75,31 +77,34 @@ class Sigmund(BaseExtension):
         self.docktab.setWidget(dock_content)
         layout = QVBoxLayout()
         layout.setSpacing(10)
-
-        if self._state == 'failed':
-            # Show message that listening failed
-            fail_label = QLabel(_("Failed to listen to Sigmund.\nMaybe another application is already listening?"))
-            layout.addWidget(fail_label)
-
-        elif self._state == 'not_listening':
-            # The user won't see this often, but could if we forcibly stopped the server
-            # Show a fail label or an idle label
-            idle_label = QLabel(_("Failed to listen to Sigmund.\nPlease restart the application."))
-            layout.addWidget(idle_label)
-
-        elif self._state == 'listening':
-            # Show a hint to open the browser
-            browser_hint = QLabel(_("Please open sigmundai.eu in a webbrowser"))
-            layout.addWidget(browser_hint)
-
-        elif self._state == 'connected':
-            # Show chat interface
+        
+        if self._state == 'connected':
             if self._chat_widget is None:
                 self._chat_widget = chat_widget.ChatWidget(self.main_window)
                 self._chat_widget.user_message_sent.connect(self.on_user_message_sent)
-            layout.addWidget(self._chat_widget)
-
+            layout.addWidget(self._chat_widget)        
+        else: 
+            if self._state == 'failed':
+                label = QLabel(_("Failed to listen to Sigmund.\nMaybe another application is already listening?"))
+            elif self._state == 'not_listening':
+                label = QLabel(_("Failed to listen to Sigmund.\nServer failed to start."))
+            else:
+                label = QLabel(
+                    _('Open <a href="https://sigmundai.eu" style="text-decoration: none;">https://sigmundai.eu</a> in a browser and log in. OpenSesame will then automatically connect.'))
+            label.setTextFormat(Qt.RichText)
+            label.setTextInteractionFlags(Qt.TextBrowserInteraction)
+            label.setWordWrap(True)
+            label.setOpenExternalLinks(True)
+            label.setAlignment(Qt.AlignCenter)
+            pix_label = QLabel()
+            pixmap = QPixmap(os.path.join(os.path.dirname(__file__), 'sigmund-full.png'))
+            pix_label.setPixmap(pixmap)
+            pix_label.setAlignment(Qt.AlignCenter)
+            layout.addWidget(pix_label)
+            layout.addWidget(label)
+            layout.addStretch()
         dock_content.setLayout(layout)
+        dock_content.resize(300, dock_content.sizeHint().height())
 
     def start_listening(self):
         """
