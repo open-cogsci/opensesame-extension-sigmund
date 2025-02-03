@@ -13,7 +13,7 @@ class WorkspaceManager(BaseWidget):
             self._item = self.item_store[item_name]
             if self._item.item_type == 'inline_script':
                 self._content, self._language = self._prepare_inline_script()
-            if self._item.item_type == 'inline_javascript':
+            elif self._item.item_type == 'inline_javascript':
                 self._content, self._language = \
                     self._prepare_inline_javascript()
             else:
