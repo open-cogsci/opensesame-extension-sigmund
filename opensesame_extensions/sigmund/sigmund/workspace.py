@@ -5,6 +5,8 @@ from libqtopensesame.widgets.base_widget import BaseWidget
 
 class WorkspaceManager(BaseWidget):
     
+    _content = None
+    
     def get(self, item_name):
         if item_name not in self.item_store:
             self._item = None
