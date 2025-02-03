@@ -1,50 +1,48 @@
 import asyncio
 import websockets
 import sys
+import queue
 from libopensesame.py3compat import *
 from libopensesame.oslogging import oslogger
 
 client_connected = False
 
 
-# Because queue.get() is blocking, we’ll call it in a thread executor via
-# run_in_executor() so it doesn’t block our event loop.
-def blocking_queue_get(q):
-    return q.get()
-
-
-async def echo(websocket, path, to_main_queue, to_server_queue):
+async def queue_manager(websocket, path, to_main_queue, to_server_queue):
     """
     Concurrently read from the client and write to the client.
     Reading side: Puts messages into to_main_queue.
-    Writing side: Pulls messages from to_server_queue (blocking),
+    Writing side: Polls messages from to_server_queue (non-blocking),
                   then sends them to the client.
     """
 
     async def read_task():
-        # Continuously read messages from the client
+        to_main_queue.put("[DEBUG] Starting read_task")
         try:
             async for message in websocket:
-                oslogger.debug(f"WebSocket server received message: {message}")
+                to_main_queue.put(f"[DEBUG] Message received from client")
                 to_main_queue.put(message)
         except websockets.exceptions.ConnectionClosed:
-            oslogger.debug("Client connection closed (read_task)")
+            to_main_queue.put("[DEBUG] Client connection closed (read_task)")
+        except Exception as e:
+            to_main_queue.put(f"[DEBUG] Unexpected error in read_task: {e}")
 
     async def write_task():
-        # Continuously check if we have messages to send from the server queue
+        to_main_queue.put("[DEBUG] Starting write_task")
         try:
             while True:
-                # Offload the blocking queue.get() call
-                msg_to_send = await asyncio.get_event_loop().run_in_executor(
-                    None,
-                    lambda: blocking_queue_get(to_server_queue)
-                )
-                oslogger.debug(f"Sending to client: {msg_to_send}")
+                try:
+                    msg_to_send = to_server_queue.get_nowait()
+                except queue.Empty:
+                    await asyncio.sleep(0.1)
+                    continue
+                to_main_queue.put(f"[DEBUG] Sending message to client")
                 await websocket.send(msg_to_send)
         except websockets.exceptions.ConnectionClosed:
-            oslogger.debug("Client connection closed (write_task)")
+            to_main_queue.put("[DEBUG] Client connection closed (write_task)")
+        except Exception as e:
+            to_main_queue.put(f"[DEBUG] Unexpected error in write_task: {e}")            
 
-    # Run both tasks until one of them finishes
     reader = asyncio.create_task(read_task())
     writer = asyncio.create_task(write_task())
 
@@ -52,8 +50,6 @@ async def echo(websocket, path, to_main_queue, to_server_queue):
         [reader, writer],
         return_when=asyncio.FIRST_COMPLETED
     )
-
-    # Cancel whatever didn’t finish first
     for task in pending:
         task.cancel()
 
@@ -65,20 +61,21 @@ async def server_handler(websocket, path, to_main_queue, to_server_queue):
     """
     global client_connected
 
-    # Check if a client is already connected
     if client_connected:
-        oslogger.debug("Refusing new connection, because a client is already connected.")
-        # Close this new websocket immediately
+        to_main_queue.put("[DEBUG] Refusing new connection; already connected")
         await websocket.close()
         return
     else:
-        # Accept this connection
         client_connected = True
+        to_main_queue.put("[DEBUG] Client connected")
         to_main_queue.put("CLIENT_CONNECTED")
 
     try:
-        await echo(websocket, path, to_main_queue, to_server_queue)
+        await queue_manager(websocket, path, to_main_queue, to_server_queue)
+    except Exception as e:
+        to_main_queue.put(f"[DEBUG] An error occurred: {e}")
     finally:
+        to_main_queue.put("[DEBUG] Client disconnected")
         client_connected = False
         to_main_queue.put("CLIENT_DISCONNECTED")
 
@@ -87,22 +84,18 @@ def start_server(to_main_queue, to_server_queue):
     """
     Start the WebSocket server to listen on localhost:8080.
     We wrap the server startup in a try/except so that a failure
-    on "websockets.serve()" or loop.run_until_complete() is
+    on websockets.serve() or loop.run_until_complete() is
     communicated back to the main process via to_main_queue.
     """
-    oslogger.start('sigmund')
     try:
         loop = asyncio.get_event_loop()
         server = websockets.serve(
-            lambda ws, path: server_handler(ws, path, to_main_queue,
-                                            to_server_queue),
+            lambda ws, path: server_handler(ws, path, to_main_queue, to_server_queue),
             "localhost",
             8080
         )
         loop.run_until_complete(server)
         loop.run_forever()
-
     except Exception as e:
-        # Notify the main process that the server failed to start
-        to_main_queue.put('FAILED_TO_START')
+        to_main_queue.put(f'FAILED_TO_START: {e}')
         sys.exit(1)
