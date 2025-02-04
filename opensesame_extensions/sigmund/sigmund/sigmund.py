@@ -13,8 +13,9 @@ from libopensesame.py3compat import *
 from libopensesame.oslogging import oslogger
 from libqtopensesame.extensions import BaseExtension
 from . import websocket_server, chat_widget, workspace
+from .diff_dialog import DiffDialog
 from libqtopensesame.misc.translate import translation_context
-_ = translation_context('Sigmund', category='extension')
+_ = translation_context('sigmund', category='extension')
 
 
 class Sigmund(BaseExtension):
@@ -256,6 +257,20 @@ Ask Sigmund to fix this
             workspace_language = data.get("workspace_language", "markdown")
             self._chat_widget.append_message("ai_message", message_text)
             self._chat_widget.setEnabled(True)
+            
+            if not self._workspace_manager.has_changed(workspace_content,
+                                                       workspace_language):
+                return
+            result = DiffDialog(
+                self.main_window,
+                message_text,
+                self._workspace_manager.strip_content(
+                    self._workspace_manager._content),
+                self._workspace_manager.strip_content(
+                    workspace_content)
+            ).exec()
+            if result != DiffDialog.Accepted:
+                return
             try:
                 self._workspace_manager.set(workspace_content,
                                             workspace_language)
@@ -276,7 +291,7 @@ Ask Sigmund to fix this
                 else:
                     self.on_user_message_sent(msg, workspace_content,
                                               workspace_language,
-                                              retry=self._retry - 1)
+                                          retry=self._retry - 1)
         else:
             oslogger.error(f'invalid incoming message: {raw_msg}')
     

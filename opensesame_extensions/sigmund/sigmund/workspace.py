@@ -1,5 +1,6 @@
 import textwrap
 import re
+from .diff_dialog import DiffDialog
 from libqtopensesame.widgets.base_widget import BaseWidget
 
 
@@ -23,10 +24,6 @@ class WorkspaceManager(BaseWidget):
         return self._content, self._language
 
     def set(self, content, language):
-        # If there is no workspace content, or it hasn't changed since the
-        # previous message, don't do anything
-        if not content or content == self._content:
-            return
         if self._item is None:
             self._parse_general_script(content)
             return
@@ -37,6 +34,19 @@ class WorkspaceManager(BaseWidget):
             self._parse_inline_javascript(content)
             return
         self._parse_item_script(content)
+        
+    def has_changed(self, content, language):
+        if not content:
+            return False
+        if content == self._content \
+                or content == self.strip_content(self._content):
+            return False
+        return True
+    
+    def strip_content(self, content):
+        return '\n'.join(
+            line for line in content.splitlines()
+            if not line.startswith('# Important instructions:'))
         
     def _parse_general_script(self, content):
         self.main_window.regenerate(content)
