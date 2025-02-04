@@ -50,6 +50,10 @@ class Sigmund(BaseExtension):
         
     def event_open_general_script(self):
         self.event_open_item(None)
+        
+    def event_rename_item(self, from_name, to_name):
+        if self._item == from_name:
+            self._item = to_name
     
     def activate(self):
         """
@@ -205,6 +209,8 @@ class Sigmund(BaseExtension):
                 action = None
         if action == 'clear_messages':
             self._chat_widget.clear_messages()
+        elif action == 'cancel_message':
+            self._chat_widget.setEnabled(True)
         elif action == 'user_message':
             message_text = data.get("message", "")
             self._chat_widget.append_message("user_message", message_text)            
