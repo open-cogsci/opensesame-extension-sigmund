@@ -1,11 +1,17 @@
 """Integrates with SigmundAI.eu for copilot functionality"""
 
 icon = 'help-faq'
-label = "SigmundAI copilot"
-tooltip = "Activate SigmundAI copilot"
+label = "SigmundAI Copilot"
+tooltip = "Activate SigmundAI Copilot"
+checkable = True
 toolbar = {
-    "index": -1,
-    "separator_before": True,
-    "separator_after": False
+    "index": 7,
+    "separator_before": False,
+    "separator_after": True
+}
+menu = {
+    "index": 4,
+    "submenu": "Tools"
 }
 modes = ["ide", "default"]
+priority = 1000

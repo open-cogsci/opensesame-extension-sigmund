@@ -8,6 +8,7 @@ from qtpy.QtWidgets import QDockWidget, QWidget, QVBoxLayout, QLabel, \
     QApplication
 from qtpy.QtGui import QPixmap
 from qtpy.QtCore import Qt, QTimer, Signal
+from libopensesame.exceptions import UserAborted
 from libopensesame.py3compat import *
 from libopensesame.oslogging import oslogger
 from libqtopensesame.extensions import BaseExtension
@@ -33,7 +34,35 @@ class Sigmund(BaseExtension):
         self._to_server_queue = None
         self._item = None
         self._chat_widget = None
+        self._visible = False
+        self._current_exception = None
         self._workspace_manager = workspace.WorkspaceManager(self.main_window)
+        
+    def event_end_experiment(self, ret_val):
+        if ret_val is None or isinstance(ret_val, UserAborted):
+            self._current_exception = None
+            return
+        self._current_exception = ret_val
+        ret_val._read_more += '''
+        
+<a id="read-more" class="important-button" href="opensesame://event.sigmund_fix_exception">
+Ask Sigmund to fix this
+</a>'''
+
+    def event_sigmund_fix_exception(self):
+        if self._current_exception is None:
+            return
+        if self._state != 'connected':
+            self.activate()
+            self.extension_manager.fire(
+                'notify',
+                message=_("Connect to Sigmund and try again!"),
+                category='info',
+                timeout=5000
+            )            
+            return
+        self._item = self._current_exception.item
+        self.on_user_message_sent(str(self._current_exception))
         
     def event_open_item(self, name):
         self._item = name
@@ -55,30 +84,37 @@ class Sigmund(BaseExtension):
         if self._item == from_name:
             self._item = to_name
     
-    def activate(self):
+    def activate(self, *dummy):
         """
         Called when the extension is activated. Sets up a dockwidget.
         If we're not already listening or connected, we immediately try to start listening.
         """
+        if self._visible:
+            self._visible = False
+            self.set_checked(False)
+            self._dock_widget.hide()
+            return
         oslogger.debug('Activating Sigmund')
+        self._visible = True
+        self.set_checked(True)
         if self._state not in ['listening', 'connected']:
             self.start_listening()
-
-        self.docktab = QDockWidget(_('Sigmund'), self.main_window)
-        self.docktab.setObjectName('opensesame-extension-sigmund')
-        self.main_window.addDockWidget(Qt.RightDockWidgetArea, self.docktab)
-
-        # Set up a timer to poll for server messages
-        self._poll_timer = QTimer(self.main_window)
-        self._poll_timer.timeout.connect(self.poll_server_queue)
-        self._poll_timer.start(100)  # check every 100ms
-
+            self._dock_widget = QDockWidget(_('Sigmund'), self.main_window)
+            self._dock_widget.setObjectName('opensesame-extension-sigmund')
+            self._dock_widget.closeEvent = self.activate
+            self.main_window.addDockWidget(Qt.RightDockWidgetArea,
+                                           self._dock_widget)
+            # Set up a timer to poll for server messages
+            self._poll_timer = QTimer(self.main_window)
+            self._poll_timer.timeout.connect(self.poll_server_queue)
+            self._poll_timer.start(100)
         self.refresh_dockwidget_ui()
+        self._dock_widget.show()
 
     def refresh_dockwidget_ui(self):
         """Update the UI based on the current state."""
         dock_content = QWidget()
-        self.docktab.setWidget(dock_content)
+        self._dock_widget.setWidget(dock_content)
         layout = QVBoxLayout()
         layout.setSpacing(10)
         
@@ -94,7 +130,7 @@ class Sigmund(BaseExtension):
                 label = QLabel(_("Failed to listen to Sigmund.\nServer failed to start."))
             else:
                 label = QLabel(
-                    _('Open <a href="https://sigmundai.eu" style="text-decoration: none;">https://sigmundai.eu</a> in a browser and log in. OpenSesame will then automatically connect.'))
+                    _('Open <a href="https://sigmundai.eu" style="text-decoration: none;">https://sigmundai.eu</a> in a browser and log in. OpenSesame will automatically connect.'))
             label.setTextFormat(Qt.RichText)
             label.setTextInteractionFlags(Qt.TextBrowserInteraction)
             label.setWordWrap(True)
