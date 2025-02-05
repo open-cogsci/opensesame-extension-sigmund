@@ -153,20 +153,26 @@ Ask Sigmund to fix this
         create queues for two-way communication.
         """
         oslogger.debug('Starting Sigmund WebSocket server')
+        self._to_main_queue = Queue()
+        self._to_server_queue = Queue()
         try:
-            self._to_main_queue = Queue()
-            self._to_server_queue = Queue()
             self._server_process = Process(
                 target=websocket_server.start_server,
                 args=(self._to_main_queue, self._to_server_queue),
                 daemon=True
             )
             self._server_process.start()
-            self._state = 'listening'
         except Exception as e:
             # For any error, we move to 'failed'
             oslogger.error(f"Failed to start Sigmund server: {e}")
             self._state = 'failed'
+        else:
+            # If we're successfull, we move to 'listening' and register the
+            # process so that it's cleaned up on shutdown.
+            self._state = 'listening'
+            self.extension_manager.fire('register_subprocess',
+                                        pid=self._server_process.pid,
+                                        description='sigmund websocket server')
 
     def on_user_message_sent(self, text, workspace_content=None,
                              workspace_language=None, retry=1):
