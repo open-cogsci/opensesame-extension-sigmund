@@ -64,6 +64,13 @@ Ask Sigmund to fix this
             return
         self._item = self._current_exception.item
         self.on_user_message_sent(str(self._current_exception))
+        self.extension_manager.fire(
+            'notify',
+            message=_("Sigmund is trying to fix your error. Please wait …"),
+            category='info',
+            timeout=5000,
+            always_show=True
+        )        
         
     def event_open_item(self, name):
         self._item = name
