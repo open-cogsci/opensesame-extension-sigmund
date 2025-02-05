@@ -13,5 +13,5 @@ menu = {
     "index": 4,
     "submenu": "Tools"
 }
-modes = ["ide", "default"]
+modes = ["default"]
 priority = 1000
