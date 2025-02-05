@@ -8,7 +8,7 @@ from libopensesame.oslogging import oslogger
 client_connected = False
 
 
-async def queue_manager(websocket, path, to_main_queue, to_server_queue):
+async def queue_manager(websocket, to_main_queue, to_server_queue):
     """
     Concurrently read from the client and write to the client.
     Reading side: Puts messages into to_main_queue.
@@ -41,7 +41,7 @@ async def queue_manager(websocket, path, to_main_queue, to_server_queue):
         except websockets.exceptions.ConnectionClosed:
             to_main_queue.put("[DEBUG] Client connection closed (write_task)")
         except Exception as e:
-            to_main_queue.put(f"[DEBUG] Unexpected error in write_task: {e}")            
+            to_main_queue.put(f"[DEBUG] Unexpected error in write_task: {e}")
 
     reader = asyncio.create_task(read_task())
     writer = asyncio.create_task(write_task())
@@ -54,7 +54,7 @@ async def queue_manager(websocket, path, to_main_queue, to_server_queue):
         task.cancel()
 
 
-async def server_handler(websocket, path, to_main_queue, to_server_queue):
+async def server_handler(websocket, to_main_queue, to_server_queue):
     """
     Handles a new client connection. We only allow one client at a time. 
     If a client is already connected, refuse this new connection immediately.
@@ -71,7 +71,7 @@ async def server_handler(websocket, path, to_main_queue, to_server_queue):
         to_main_queue.put("CLIENT_CONNECTED")
 
     try:
-        await queue_manager(websocket, path, to_main_queue, to_server_queue)
+        await queue_manager(websocket, to_main_queue, to_server_queue)
     except Exception as e:
         to_main_queue.put(f"[DEBUG] An error occurred: {e}")
     finally:
@@ -80,22 +80,23 @@ async def server_handler(websocket, path, to_main_queue, to_server_queue):
         to_main_queue.put("CLIENT_DISCONNECTED")
 
 
+async def serve_ws(to_main_queue, to_server_queue):
+    # Create the websocket server and keep it running forever
+    async with websockets.serve(
+        lambda ws: server_handler(ws, to_main_queue, to_server_queue),
+        "localhost",
+        8080
+    ):
+        # Prevent the function from returning so the server stays alive
+        await asyncio.Future()
+
+
 def start_server(to_main_queue, to_server_queue):
     """
-    Start the WebSocket server to listen on localhost:8080.
-    We wrap the server startup in a try/except so that a failure
-    on websockets.serve() or loop.run_until_complete() is
-    communicated back to the main process via to_main_queue.
+    Use asyncio.run(...) to start the event loop in a cross-platform way.
     """
     try:
-        loop = asyncio.get_event_loop()
-        server = websockets.serve(
-            lambda ws, path: server_handler(ws, path, to_main_queue, to_server_queue),
-            "localhost",
-            8080
-        )
-        loop.run_until_complete(server)
-        loop.run_forever()
+        asyncio.run(serve_ws(to_main_queue, to_server_queue))
     except Exception as e:
         to_main_queue.put(f'FAILED_TO_START: {e}')
         sys.exit(1)
