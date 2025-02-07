@@ -37,7 +37,7 @@ class Sigmund(BaseExtension):
         self._chat_widget = None
         self._visible = False
         self._current_exception = None
-        self._workspace_manager = workspace.WorkspaceManager(self.main_window)
+        self._workspace_manager = workspace.WorkspaceManager(self)
         
     def event_end_experiment(self, ret_val):
         if ret_val is None or isinstance(ret_val, UserAborted):
