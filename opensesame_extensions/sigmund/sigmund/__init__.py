@@ -13,5 +13,8 @@ menu = {
     "index": 4,
     "submenu": "Tools"
 }
-modes = ["default"]
+settings = {
+    "sigmund_token": ""
+}
+modes = ["default", "ide"]
 priority = 1000

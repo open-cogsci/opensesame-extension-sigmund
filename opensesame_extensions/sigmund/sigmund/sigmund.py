@@ -12,6 +12,7 @@ from libopensesame.exceptions import UserAborted
 from libopensesame.py3compat import *
 from libopensesame.oslogging import oslogger
 from libqtopensesame.extensions import BaseExtension
+from libqtopensesame.misc.config import cfg
 from . import websocket_server, chat_widget, workspace
 from .diff_dialog import DiffDialog
 from libqtopensesame.misc.translate import translation_context
@@ -230,6 +231,12 @@ Ask Sigmund to fix this
                     category='info',
                     timeout=5000
                 )
+                # Request a token from Sigmund and set up a timer to request
+                # a new token every hour.
+                self._request_token()
+                self._token_timer = QTimer(self.main_window)
+                self._token_timer.timeout.connect(self._request_token)
+                self._token_timer.start(60 * 60 * 1000)  # 1 hour (in ms)
             elif msg == "CLIENT_DISCONNECTED":
                 if self._server_process is not None:
                     self._state = 'listening'
@@ -242,6 +249,10 @@ Ask Sigmund to fix this
                     )
             else:
                 self._handle_incoming_message(msg)
+                
+    def _request_token(self):
+        send_str = json.dumps({"action": "get_token"})
+        self._to_server_queue.put(send_str)
 
     def _handle_incoming_message(self, raw_msg):
         """
@@ -257,7 +268,10 @@ Ask Sigmund to fix this
                 action = data.get("action", None)
             else:
                 action = None
-        if action == 'clear_messages':
+        if action == 'token':
+            oslogger.info(f'received token from sigmund: {data}')
+            cfg.sigmund_token = data.get('message', '')
+        elif action == 'clear_messages':
             self._chat_widget.clear_messages()
         elif action == 'cancel_message':
             self._chat_widget.setEnabled(True)
