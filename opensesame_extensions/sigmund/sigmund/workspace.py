@@ -46,6 +46,8 @@ class WorkspaceManager:
         return True
     
     def strip_content(self, content):
+        if content is None:
+            return ''
         return '\n'.join(
             line for line in content.splitlines()
             if not line.startswith('# Important instructions:'))
