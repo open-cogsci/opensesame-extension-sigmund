@@ -123,7 +123,7 @@ Ask Sigmund to fix this
             self.extension_manager.fire(
                 'notify',
                 message=_("Sigmund server failed to start."),
-                category='error',
+                category='warning',
                 timeout=5000
             )
         elif new_state == 'connected':
