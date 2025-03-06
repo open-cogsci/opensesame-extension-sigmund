@@ -225,19 +225,21 @@ class SigmundWidget(QWidget):
             message_text = data.get("message", "")
             self.chat_widget.append_message("ai_message", message_text)
             self.chat_widget.setEnabled(True)
-
+    
             # Attempt to apply workspace changes, if any
             workspace_content = data.get("workspace_content", "")
-            workspace_language = data.get("workspace_language", "markdown")
+            workspace_language = data.get("workspace_language", "markdown")            
+            on_connect = data.get("on_connect", False)
             if (
-                self._workspace_manager
-                and self._workspace_manager.has_changed(workspace_content, workspace_language)
+                not on_connect and self._workspace_manager
+                and self._workspace_manager.has_changed(workspace_content,
+                                                        workspace_language)
             ):
                 # Show diff, and if accepted, update
                 result = DiffDialog(
                     self,
                     message_text,
-                    self._workspace_manager.strip_content(self._workspace_manager._content),
+                    self._workspace_manager.strip_content(self._workspace_manager.content),
                     self._workspace_manager.strip_content(workspace_content)
                 ).exec()
                 if result == DiffDialog.Accepted:
@@ -258,8 +260,7 @@ class SigmundWidget(QWidget):
                             self.send_user_message(err_msg, workspace_content,
                                                    workspace_language,
                                                    retry=self._retry - 1)
-                # else do nothing if user rejects
-
+    
         else:
             logger.error(f'invalid or unhandled incoming message: {data}')
 

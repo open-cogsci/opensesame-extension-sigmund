@@ -4,26 +4,27 @@ import re
 
 class WorkspaceManager:
     
-    _content = None
     
     def __init__(self, sigmund):
         self._sigmund = sigmund
+        self.content = None
+        self.language = None
         self.item_name = None
     
     def get(self):
         if self.item_name not in self._sigmund.item_store:
             self._item = None
-            self._content, self._language = self._prepare_general_script()
+            self.content, self.language = self._prepare_general_script()
         else:
             self._item = self._sigmund.item_store[self.item_name]
             if self._item.item_type == 'inline_script':
-                self._content, self._language = self._prepare_inline_script()
+                self.content, self.language = self._prepare_inline_script()
             elif self._item.item_type == 'inline_javascript':
-                self._content, self._language = \
+                self.content, self.language = \
                     self._prepare_inline_javascript()
             else:
-                self._content, self._language = self._prepare_item_script()
-        return self._content, self._language
+                self.content, self.language = self._prepare_item_script()
+        return self.content, self.language
 
     def set(self, content, language):
         if self._item is None:
@@ -40,8 +41,8 @@ class WorkspaceManager:
     def has_changed(self, content, language):
         if not content:
             return False
-        if content == self._content \
-                or content == self.strip_content(self._content):
+        if content == self.content \
+                or content == self.strip_content(self.content):
             return False
         return True
     
