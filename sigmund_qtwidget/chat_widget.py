@@ -155,14 +155,16 @@ class ChatWidget(QWidget):
         """
         bubble_widget = QWidget()
         bubble_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
-
+        
         h_layout = QHBoxLayout()
         bubble_widget.setLayout(h_layout)
-
+        
         label = QLabel()
         label.setWordWrap(True)
         label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-
+        # Make text selectable with mouse
+        label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        
         if msg_type == "user_message":
             # Plain text for user
             # Use CSS to ensure wrapping
@@ -195,7 +197,7 @@ class ChatWidget(QWidget):
             """)
             h_layout.addWidget(label)
             h_layout.addStretch()
-
+        
         self._chat_layout.addWidget(bubble_widget)
         self._chat_container.setFixedWidth(self._scroll_area.viewport().width())
 
