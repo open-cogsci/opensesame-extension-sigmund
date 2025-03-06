@@ -14,7 +14,7 @@ class SigmundDockWidget(QDockWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Sigmund")
-
+        self.setObjectName("sigmund_dock_widget")
         # Create our SigmundWidget and place it inside this dock
         self.sigmund_widget = SigmundWidget(self)
         self.setWidget(self.sigmund_widget)
