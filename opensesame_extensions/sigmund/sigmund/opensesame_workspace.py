@@ -1,6 +1,5 @@
 import textwrap
 import re
-from .diff_dialog import DiffDialog
 
 
 class WorkspaceManager:
@@ -9,13 +8,14 @@ class WorkspaceManager:
     
     def __init__(self, sigmund):
         self._sigmund = sigmund
+        self.item_name = None
     
-    def get(self, item_name):
-        if item_name not in self._sigmund.item_store:
+    def get(self):
+        if self.item_name not in self._sigmund.item_store:
             self._item = None
             self._content, self._language = self._prepare_general_script()
         else:
-            self._item = self._sigmund.item_store[item_name]
+            self._item = self._sigmund.item_store[self.item_name]
             if self._item.item_type == 'inline_script':
                 self._content, self._language = self._prepare_inline_script()
             elif self._item.item_type == 'inline_javascript':

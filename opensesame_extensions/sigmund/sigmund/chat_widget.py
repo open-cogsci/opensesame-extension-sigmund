@@ -9,8 +9,7 @@ from qtpy.QtWidgets import (
     QSizePolicy,
     QApplication
 )
-from qtpy.QtCore import Signal, Qt, QEvent, QSize
-from libqtopensesame.widgets.base_widget import BaseWidget
+from qtpy.QtCore import Signal, Qt, QSize
 
 
 class MultiLineInput(QPlainTextEdit):
@@ -37,7 +36,7 @@ class MultiLineInput(QPlainTextEdit):
         super().keyPressEvent(event)
 
 
-class ChatWidget(BaseWidget):
+class ChatWidget(QWidget):
     """
     A chat interface with:
       - A scrollable area for messages (bubbles).
@@ -83,9 +82,7 @@ class ChatWidget(BaseWidget):
         self._chat_input.enterPressed.connect(self._on_send)
         input_row.addWidget(self._chat_input)
 
-        self._send_button = QPushButton()
-        self._send_button.setIcon(self.theme.qicon('document-send'))
-        self._send_button.setIconSize(QSize(32, 32))
+        self._send_button = QPushButton('➤')
         # Make the button as tall as the text input
         self._send_button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
         self._send_button.clicked.connect(self._on_send)
