@@ -1,6 +1,6 @@
 import difflib
 from qtpy.QtWidgets import QVBoxLayout, QDialogButtonBox, QLabel, \
-    QSizePolicy, QScrollArea, QWidget, QDialog
+    QSizePolicy, QScrollArea, QWidget, QDialog, QSplitter
 from qtpy.QtCore import Qt
 import logging
 logger = logging.getLogger(__name__)
@@ -43,15 +43,17 @@ class DiffDialog(QDialog):
         )
 
         layout = QVBoxLayout()
+        self.setLayout(layout)
+
         # The info label contains the AI message
         info_label = QLabel(message)
         info_label.setTextFormat(Qt.RichText)
         info_label.setWordWrap(True)
         info_label.setAlignment(Qt.AlignTop)
         info_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
-        # Check height of info_label
+
+        # If the label is too tall, wrap it in a scroll area
         if info_label.sizeHint().height() > MAX_MESSAGE_HEIGHT:
-            # Use QScrollArea if the label is too large
             scroll_area = QScrollArea(self)
             scroll_area.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
             scroll_area.setWidgetResizable(True)
@@ -60,12 +62,12 @@ class DiffDialog(QDialog):
             message_layout = QVBoxLayout(message_widget)
             message_layout.addWidget(info_label)
             scroll_area.setWidget(message_widget)
-            layout.addWidget(scroll_area)
-            scroll_area.setMaximumHeight(MAX_MESSAGE_HEIGHT)
+
+            top_widget = scroll_area
         else:
-            # If the label fits, add directly
-            layout.addWidget(info_label)
-            
+            top_widget = info_label
+
+        # Create the diff view
         if create_editor:
             self.diff_view = create_editor(language='diff')
             # If no changes, say so; otherwise, display the diff
@@ -73,7 +75,7 @@ class DiffDialog(QDialog):
                 self.diff_view.setPlainText(diff_text)
             else:
                 self.diff_view.setPlainText("No changes suggested.")
-        else:            
+        else:
             self.diff_view = FallbackCodeEdit(self)
             self.diff_view.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
             self.diff_view.panels.remove('ReadOnlyPanel')
@@ -81,29 +83,34 @@ class DiffDialog(QDialog):
                 'register_editor',
                 editor=self.diff_view
             )
-            # If no changes, say so; otherwise, display the diff
             if diff_text.strip():
                 self.diff_view.setPlainText(diff_text, mime_type='text/x-diff')
             else:
                 self.diff_view.setPlainText("No changes suggested.")
         self.diff_view.setReadOnly(True)
 
-        layout.addWidget(self.diff_view)
+        # Create a vertical splitter to hold the top widget and the diff
+        splitter = QSplitter(Qt.Vertical)
+        splitter.addWidget(top_widget)
+        splitter.addWidget(self.diff_view)
+        layout.addWidget(splitter)
+
         # The disclaimer label 
         disclaimer_label = QLabel(
-            "Carefully review suggested changes before applying them. Sigmund sometimes makes mistakes."
-            , self)
+            "Carefully review suggested changes before applying them. Sigmund sometimes makes mistakes.",
+            self
+        )
         disclaimer_label.setWordWrap(True)
         disclaimer_label.setObjectName('control-info')
         disclaimer_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         layout.addWidget(disclaimer_label)
+
         # Dialog buttons
         self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
         layout.addWidget(self.button_box)
 
-        self.setLayout(layout)
         self.resize(800, 600)
 
     def done(self, r):
