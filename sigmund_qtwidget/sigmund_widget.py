@@ -7,6 +7,7 @@ from qtpy.QtGui import QPixmap
 from qtpy.QtCore import Qt, QTimer, Signal
 from . import websocket_server, chat_widget
 from .diff_dialog import DiffDialog
+import atexit
 import logging
 logging.basicConfig(level=logging.INFO, force=True)
 logger = logging.getLogger(__name__)
@@ -57,12 +58,12 @@ class SigmundWidget(QWidget):
         logger.debug('Starting Sigmund WebSocket server')
         self._to_main_queue = Queue()
         self._to_server_queue = Queue()
-
+    
         try:
             self._server_process = Process(
                 target=websocket_server.start_server,
                 args=(self._to_main_queue, self._to_server_queue),
-                daemon=True
+                daemon=True  # Daemon mode helps if main process ends normally.
             )
             self._server_process.start()
         except Exception as e:
@@ -74,6 +75,14 @@ class SigmundWidget(QWidget):
             self._update_state('listening')
             # Start polling
             self._poll_timer.start(100)
+    
+            # Use atexit to ensure cleanup if Python exits normally.
+            # If forcibly killed, this won't run, so you might consider other solutions like signals.
+            @atexit.register
+            def _cleanup_server():
+                if self._server_process.is_alive():
+                    logger.info("Terminating Sigmund WebSocket server on exit.")
+                    self._server_process.terminate()
 
     def send_user_message(self, text, workspace_content=None,
                           workspace_language=None, retry=1):
