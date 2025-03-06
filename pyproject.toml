@@ -6,6 +6,7 @@ authors = ["Sebastiaan Mathôt <s.mathot@cogsci.nl>"]
 readme = "readme.md"
 packages = [
     {include = "opensesame_extensions"},
+    {include = "sigmund_qtwidget"}
 ]
 license = "COPYING"
 homepage = "https://osdoc.cogsci.nl"
@@ -16,7 +17,7 @@ websockets = ">= 10"
 
 [tool.wheel2deb.dependencies]
 python = ">= 3.7"
-opensesame = ">= 3.99.99"
+websockets = ">= 10"
 
 [build-system]
 requires = ["poetry-core"]
