@@ -79,7 +79,7 @@ class DiffDialog(QDialog):
             self.diff_view = FallbackCodeEdit(self)
             self.diff_view.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
             self.diff_view.panels.remove('ReadOnlyPanel')
-            self.parent().parent().extension_manager.fire(
+            self.parent().parent().parent().extension_manager.fire(
                 'register_editor',
                 editor=self.diff_view
             )
@@ -119,7 +119,7 @@ class DiffDialog(QDialog):
         or the close button.
         """
         if create_editor is None:
-            self.parent().parent().extension_manager.fire(
+            self.parent().parent().parent().extension_manager.fire(
                 'unregister_editor',
                 editor=self.diff_view
             )
