@@ -5,7 +5,7 @@ from qtpy.QtCore import Qt
 import logging
 logger = logging.getLogger(__name__)
 try:
-    from pyqt_code_editor.editors import create_editor
+    from pyqt_code_editor.code_editors import create_editor
     logger.info('using pyqt_code_editor')
 except ImportError:
     logger.info('using pyqode')
@@ -67,7 +67,12 @@ class DiffDialog(QDialog):
             layout.addWidget(info_label)
             
         if create_editor:
-            self.diff_view = create_editor()
+            self.diff_view = create_editor(language='diff')
+            # If no changes, say so; otherwise, display the diff
+            if diff_text.strip():
+                self.diff_view.setPlainText(diff_text)
+            else:
+                self.diff_view.setPlainText("No changes suggested.")
         else:            
             self.diff_view = FallbackCodeEdit(self)
             self.diff_view.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -76,12 +81,12 @@ class DiffDialog(QDialog):
                 'register_editor',
                 editor=self.diff_view
             )
+            # If no changes, say so; otherwise, display the diff
+            if diff_text.strip():
+                self.diff_view.setPlainText(diff_text, mime_type='text/x-diff')
+            else:
+                self.diff_view.setPlainText("No changes suggested.")
         self.diff_view.setReadOnly(True)
-        # If no changes, say so; otherwise, display the diff
-        if diff_text.strip():
-            self.diff_view.setPlainText(diff_text, mime_type='text/x-diff')
-        else:
-            self.diff_view.setPlainText("No changes suggested.")
 
         layout.addWidget(self.diff_view)
         # The disclaimer label 

@@ -2,8 +2,6 @@ import asyncio
 import websockets
 import sys
 import queue
-from libopensesame.py3compat import *
-from libopensesame.oslogging import oslogger
 
 client_connected = False
 

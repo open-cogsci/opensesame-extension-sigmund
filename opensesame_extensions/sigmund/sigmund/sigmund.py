@@ -6,7 +6,7 @@ from libopensesame.oslogging import oslogger
 from libqtopensesame.extensions import BaseExtension
 from libqtopensesame.misc.config import cfg
 from . import opensesame_workspace as workspace
-from .dock_widget import SigmundDockWidget
+from sigmund_qtwidget.sigmund_dock_widget import SigmundDockWidget
 from libqtopensesame.misc.translate import translation_context
 _ = translation_context('sigmund', category='extension')
 
@@ -18,7 +18,7 @@ class Sigmund(BaseExtension):
         Initialize the extension state.
         """
         self._state = 'not_listening'
-        self._dock_widget = None
+        self._sigmund_widget = None
         self._visible = False
         self._current_exception = None
         self._workspace_manager = workspace.WorkspaceManager(self)
@@ -50,8 +50,8 @@ Ask Sigmund to fix this
             return
         self._item = self._current_exception.item
         self._workspace_manager.item_name = self._current_exception.item
-        if self._dock_widget:
-            self._dock_widget.send_user_message(str(self._current_exception))
+        if self._sigmund_widget:
+            self._sigmund_widget.send_user_message(str(self._current_exception))
         self.extension_manager.fire(
             'notify',
             message=_("Sigmund is trying to fix your error. Please wait …"),
@@ -63,13 +63,13 @@ Ask Sigmund to fix this
     def event_open_item(self, name):
         self._item = name
         self._workspace_manager.item_name = name
-        if self._dock_widget and self._dock_widget.chat_widget is not None:
+        if self._sigmund_widget and self._sigmund_widget.chat_widget is not None:
             if name is None:
-                self._dock_widget.chat_widget.append_message('ai_message',
+                self._sigmund_widget.chat_widget.append_message('ai_message',
                     _('We are now talking about the entire experiment. '
                       'To ask questions about a specific item, please select it first.'))
             else:
-                self._dock_widget.chat_widget.append_message('ai_message',
+                self._sigmund_widget.chat_widget.append_message('ai_message',
                     _('We are now talking about item {}').format(name))
 
     def event_open_general_properties(self):
@@ -92,8 +92,8 @@ Ask Sigmund to fix this
         if self._visible:
             self._visible = False
             self.set_checked(False)
-            if self._dock_widget:
-                self._dock_widget.hide()
+            if self._sigmund_widget:
+                self._sigmund_widget.hide()
             return
 
         # Show
@@ -101,25 +101,28 @@ Ask Sigmund to fix this
         self.set_checked(True)
 
         # Create the dock widget if it doesn't exist
-        if self._dock_widget is None:
+        if self._sigmund_widget is None:
             self._dock_widget = SigmundDockWidget(self.main_window)
-            self._dock_widget.set_workspace_manager(self._workspace_manager)
-            self.main_window.addDockWidget(Qt.RightDockWidgetArea, self._dock_widget)
+            self._sigmund_widget = self._dock_widget.sigmund_widget
+            self._sigmund_widget.set_workspace_manager(self._workspace_manager)
+            self.main_window.addDockWidget(Qt.RightDockWidgetArea,
+                                           self._dock_widget)
             self._dock_widget.close_requested.connect(self.activate)
 
             # Dock widget signals
-            self._dock_widget.server_state_changed.connect(self._on_server_state_changed)
+            self._sigmund_widget.server_state_changed.connect(
+                self._on_server_state_changed)
 
             # Attempt to start the server
-            self._dock_widget.start_server()
+            self._sigmund_widget.start_server()
 
         # Refresh and show
-        self._dock_widget.show()
+        self._sigmund_widget.show()
 
     def refresh_dockwidget_ui(self):
         """Ask the dock widget to update its UI based on the current state."""
-        if self._dock_widget:
-            self._dock_widget.refresh_ui()
+        if self._sigmund_widget:
+            self._sigmund_widget.refresh_ui()
 
     def _on_server_state_changed(self, new_state):
         """
