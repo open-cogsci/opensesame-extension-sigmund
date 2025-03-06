@@ -9,7 +9,7 @@ from qtpy.QtWidgets import (
     QSizePolicy,
     QApplication
 )
-from qtpy.QtCore import Signal, Qt, QSize
+from qtpy.QtCore import Signal, Qt, QPoint
 
 
 class MultiLineInput(QPlainTextEdit):
@@ -107,11 +107,35 @@ class ChatWidget(QWidget):
         text = self._chat_input.toPlainText().strip()
         self._send_button.setEnabled(len(text) >= 3)
 
-    def _scroll_to_bottom(self):
-        """Scrolls to the bottom of the chat display."""
-        self._scroll_area.verticalScrollBar().setValue(
-            self._scroll_area.verticalScrollBar().maximum()
-        )
+    def scroll_to_bottom(self):        
+        # Ensure the layout is updated with any new widgets.
+        QApplication.processEvents()
+        
+        if self._chat_layout.count() == 0:
+            return
+        
+        # Get the last widget in the chat layout.
+        last_index = self._chat_layout.count() - 1
+        last_item = self._chat_layout.itemAt(last_index)
+        last_widget = last_item.widget()
+        
+        # If there's no widget, do nothing.
+        if not last_widget:
+            return
+        
+        # Convert the widget's top-left corner to the chat_container's coordinate system.
+        widget_pos_in_container = last_widget.mapTo(self._chat_container, QPoint(0, 0))
+        # The y-position of the bottom edge of the last widget.
+        bottom_edge = widget_pos_in_container.y() + last_widget.height()
+        
+        # The height of the viewport we can see.
+        viewport_height = self._scroll_area.viewport().height()
+        
+        # Calculate how far we need to scroll so that the bottom edge is fully visible.
+        scroll_value = bottom_edge - viewport_height
+        
+        # Make sure we don't scroll past the top.
+        self._scroll_area.verticalScrollBar().setValue(max(scroll_value, 0))
 
     def _on_send(self):
         text = self._chat_input.toPlainText().strip()
@@ -174,15 +198,15 @@ class ChatWidget(QWidget):
 
         self._chat_layout.addWidget(bubble_widget)
         self._chat_container.setFixedWidth(self._scroll_area.viewport().width())
-        self._scroll_to_bottom()
-        QApplication.processEvents()
 
-    def append_message(self, msg_type, text):
+    def append_message(self, msg_type, text, scroll=True):
         """
         Public method for the extension to add a message from outside,
         e.g. for an AI reply.
         """
         self._add_message_bubble(text, msg_type)
+        if scroll:
+            self.scroll_to_bottom()
 
     def clear_messages(self):
         """
