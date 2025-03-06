@@ -1,5 +1,6 @@
 from pathlib import Path
 from qtpy.QtCore import Qt
+from qtpy.QtWidgets import QLabel
 from libopensesame.exceptions import UserAborted
 from libopensesame.py3compat import *
 from libopensesame.oslogging import oslogger
@@ -22,7 +23,6 @@ class Sigmund(BaseExtension):
         self._visible = False
         self._current_exception = None
         self._workspace_manager = workspace.WorkspaceManager(self)
-        self._item = None
 
     def event_end_experiment(self, ret_val):
         if ret_val is None or isinstance(ret_val, UserAborted):
@@ -48,7 +48,6 @@ Ask Sigmund to fix this
                 timeout=5000
             )
             return
-        self._item = self._current_exception.item
         self._workspace_manager.item_name = self._current_exception.item
         if self._sigmund_widget:
             self._sigmund_widget.send_user_message(str(self._current_exception))
@@ -61,16 +60,7 @@ Ask Sigmund to fix this
         )
 
     def event_open_item(self, name):
-        self._item = name
         self._workspace_manager.item_name = name
-        if self._sigmund_widget and self._sigmund_widget.chat_widget is not None:
-            if name is None:
-                self._sigmund_widget.chat_widget.append_message('ai_message',
-                    _('We are now talking about the entire experiment. '
-                      'To ask questions about a specific item, please select it first.'))
-            else:
-                self._sigmund_widget.chat_widget.append_message('ai_message',
-                    _('We are now talking about item {}').format(name))
 
     def event_open_general_properties(self):
         self.event_open_item(None)
@@ -79,8 +69,7 @@ Ask Sigmund to fix this
         self.event_open_item(None)
 
     def event_rename_item(self, from_name, to_name):
-        if self._item == from_name:
-            self._item = to_name
+        if self._workspace_manager.item_name == from_name:
             self._workspace_manager.item_name = to_name
 
     def activate(self, *dummy):
@@ -145,6 +134,10 @@ Ask Sigmund to fix this
                 category='info',
                 timeout=5000
             )
+            label = QLabel()
+            label.setText(_("<small>Tip: Select an item to discuss it"))
+            label.setObjectName('control-info')
+            self._sigmund_widget.chat_widget.layout().addWidget(label)
 
     def icon(self):
         """Return the icon for the extension."""

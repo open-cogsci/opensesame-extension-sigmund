@@ -272,5 +272,5 @@ class SigmundWidget(QWidget):
         if new_state == self._state:
             return
         self._state = new_state
-        self.server_state_changed.emit(new_state)
         self.refresh_ui()
+        self.server_state_changed.emit(new_state)
