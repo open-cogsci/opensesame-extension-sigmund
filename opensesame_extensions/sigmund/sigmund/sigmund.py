@@ -104,6 +104,9 @@ Ask Sigmund to fix this
 
             # Attempt to start the server
             self._sigmund_widget.start_server()
+            self.extension_manager.fire('register_subprocess',
+                                        pid=self._sigmund_widget.server_pid,
+                                        description='sigmund server')
 
         # Refresh and show
         self._sigmund_widget.show()
