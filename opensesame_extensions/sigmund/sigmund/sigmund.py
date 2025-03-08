@@ -60,9 +60,11 @@ Ask Sigmund to fix this
         )
 
     def event_open_item(self, name):
+        oslogger.info(f'Sigmund: opening item {name}')
         self._workspace_manager.item_name = name
 
     def event_open_general_properties(self):
+        oslogger.info('Sigmund: opening general properties')
         self.event_open_item(None)
 
     def event_open_general_script(self):
