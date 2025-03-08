@@ -84,7 +84,7 @@ Ask Sigmund to fix this
             self._visible = False
             self.set_checked(False)
             if self._sigmund_widget:
-                self._sigmund_widget.hide()
+                self._dock_widget.hide()
             return
 
         # Show
@@ -111,7 +111,7 @@ Ask Sigmund to fix this
                                         description='sigmund server')
 
         # Refresh and show
-        self._sigmund_widget.show()
+        self._dock_widget.show()
 
     def refresh_dockwidget_ui(self):
         """Ask the dock widget to update its UI based on the current state."""

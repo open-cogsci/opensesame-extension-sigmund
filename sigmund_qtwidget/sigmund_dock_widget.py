@@ -18,6 +18,7 @@ class SigmundDockWidget(QDockWidget):
         # Create our SigmundWidget and place it inside this dock
         self.sigmund_widget = SigmundWidget(self)
         self.setWidget(self.sigmund_widget)
+        self.visibilityChanged.connect(self._on_visibility_changed)
 
         # Override close event and emit a signal for the extension to handle
         def _close_event_override(event):
@@ -26,3 +27,10 @@ class SigmundDockWidget(QDockWidget):
             self.close_requested.emit()
 
         self.closeEvent = _close_event_override
+
+    def _on_visibility_changed(self, visible):
+        print(f'visibility changed to {visible}')
+        if visible:
+            self.sigmund_widget.start_server()
+        else:
+            self.sigmund_widget.stop_server()

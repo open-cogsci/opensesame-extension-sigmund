@@ -75,6 +75,22 @@ class SigmundWidget(QWidget):
             # Start polling
             self._poll_timer.start(100)
             
+    def stop_server(self):
+        """
+        Stop the WebSocket server and clean up.
+        """
+        if self._state == 'not_listening':
+            return
+        logger.info('Stopping Sigmund WebSocket server')
+        self._poll_timer.stop()
+        if self._server_process is not None:
+            self._server_process.terminate()
+            self._server_process.join()
+            self._server_process = None
+        self._to_main_queue = None
+        self._to_server_queue = None
+        self._update_state('not_listening')
+            
     @property
     def server_pid(self):
         """Return server process pid. If there is no process, or if it is not
