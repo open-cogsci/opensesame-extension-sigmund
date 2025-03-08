@@ -154,14 +154,14 @@ class ChatWidget(QWidget):
         - msg_type: 'user_message' or 'ai_message'
         """
         bubble_widget = QWidget()
-        bubble_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        bubble_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         
         h_layout = QHBoxLayout()
         bubble_widget.setLayout(h_layout)
         
         label = QLabel()
         label.setWordWrap(True)
-        label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
         # Make text selectable with mouse
         label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         
