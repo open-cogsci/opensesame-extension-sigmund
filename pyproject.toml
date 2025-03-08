@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "opensesame-extension-sigmund"
-version = "0.2.1"
+version = "0.2.2"
 description = "SigmundAI copilot extension for OpenSesame/ Rapunzel"
 authors = ["Sebastiaan Mathôt <s.mathot@cogsci.nl>"]
 readme = "readme.md"
