@@ -178,7 +178,7 @@ class ChatWidget(QWidget):
     
         label = QLabel()
         label.setWordWrap(True)
-        label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
+        label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         # Make text selectable with mouse
         label.setTextInteractionFlags(Qt.TextSelectableByMouse)
     
