@@ -2,7 +2,7 @@ import sys
 from qtpy.QtWidgets import QApplication, QHBoxLayout, QWidget
 from sigmund_qtwidget.sigmund_widget import SigmundWidget
 from pyqt_code_editor.code_editors import create_editor
-from pyqt_code_editor.worker import manager
+from pyqt_code_editor import watchdog
 import logging
 logging.basicConfig(level=logging.debug)
 
@@ -72,7 +72,7 @@ class MainWindow(QWidget):
         self.setLayout(layout)
         
     def closeEvent(self, event):
-        manager.stop_all_workers()
+        watchdog.shutdown()
         super().closeEvent(event)        
 
 
