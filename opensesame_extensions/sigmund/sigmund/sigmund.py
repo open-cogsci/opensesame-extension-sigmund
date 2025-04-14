@@ -86,11 +86,9 @@ Ask Sigmund to fix this
             if self._sigmund_widget:
                 self._dock_widget.hide()
             return
-
         # Show
         self._visible = True
         self.set_checked(True)
-
         # Create the dock widget if it doesn't exist
         if self._sigmund_widget is None:
             self._dock_widget = SigmundDockWidget(self.main_window)
@@ -99,17 +97,9 @@ Ask Sigmund to fix this
             self.main_window.addDockWidget(Qt.RightDockWidgetArea,
                                            self._dock_widget)
             self._dock_widget.close_requested.connect(self.activate)
-
             # Dock widget signals
             self._sigmund_widget.server_state_changed.connect(
                 self._on_server_state_changed)
-
-            # Attempt to start the server
-            self._sigmund_widget.start_server()
-            self.extension_manager.fire('register_subprocess',
-                                        pid=self._sigmund_widget.server_pid,
-                                        description='sigmund server')
-
         # Refresh and show
         self._dock_widget.show()
 

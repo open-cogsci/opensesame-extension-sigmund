@@ -1,6 +1,9 @@
 from qtpy.QtCore import Signal
 from qtpy.QtWidgets import QDockWidget
 from .sigmund_widget import SigmundWidget
+import logging
+logging.basicConfig(level=logging.INFO, force=True)
+logger = logging.getLogger(__name__)
 
 
 class SigmundDockWidget(QDockWidget):
@@ -18,19 +21,21 @@ class SigmundDockWidget(QDockWidget):
         # Create our SigmundWidget and place it inside this dock
         self.sigmund_widget = SigmundWidget(self)
         self.setWidget(self.sigmund_widget)
-        self.visibilityChanged.connect(self._on_visibility_changed)
-
         # Override close event and emit a signal for the extension to handle
         def _close_event_override(event):
             event.ignore()
             self.hide()
             self.close_requested.emit()
-
         self.closeEvent = _close_event_override
 
-    def _on_visibility_changed(self, visible):
-        print(f'visibility changed to {visible}')
+    def setVisible(self, visible):
         if visible:
+            logger.info('starting sigmund connector')
             self.sigmund_widget.start_server()
+            self.parent().extension_manager.fire(
+                'register_subprocess', pid=self.sigmund_widget.server_pid,
+                description='sigmund server')
         else:
+            logger.info('stopping sigmund connector')
             self.sigmund_widget.stop_server()
+        super().setVisible(visible)
