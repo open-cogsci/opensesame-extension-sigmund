@@ -153,21 +153,27 @@ class ChatWidget(QWidget):
         Adds a message bubble to the chat layout.
         - msg_type: 'user_message' or 'ai_message'
         """
+        # 1) Remove the last item if it's a stretch (so we don't keep stacking them)
+        count = self._chat_layout.count()
+        if count > 0:
+            item = self._chat_layout.itemAt(count - 1)
+            if item and item.spacerItem():
+                self._chat_layout.removeItem(item)
+    
+        # 2) Create the bubble widget
         bubble_widget = QWidget()
         bubble_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        
+    
         h_layout = QHBoxLayout()
         bubble_widget.setLayout(h_layout)
-        
+    
         label = QLabel()
         label.setWordWrap(True)
         label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
         # Make text selectable with mouse
         label.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        
+    
         if msg_type == "user_message":
-            # Plain text for user
-            # Use CSS to ensure wrapping
             label.setText(text)
             label.setStyleSheet("""
                 QLabel {
@@ -181,7 +187,6 @@ class ChatWidget(QWidget):
             h_layout.addStretch()
             h_layout.addWidget(label)
         else:
-            # HTML for AI, ensuring <pre> wraps
             label.setTextFormat(Qt.RichText)
             label.setText(text)
             label.setStyleSheet("""
@@ -197,8 +202,13 @@ class ChatWidget(QWidget):
             """)
             h_layout.addWidget(label)
             h_layout.addStretch()
-        
+    
         self._chat_layout.addWidget(bubble_widget)
+    
+        # 3) Add a new stretch at the bottom
+        self._chat_layout.addStretch()
+    
+        # Resize container width
         self._chat_container.setFixedWidth(self._scroll_area.viewport().width())
 
     def append_message(self, msg_type, text, scroll=True):
