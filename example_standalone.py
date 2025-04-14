@@ -4,13 +4,41 @@ from sigmund_qtwidget.sigmund_widget import SigmundWidget
 from pyqt_code_editor.code_editors import create_editor
 from pyqt_code_editor import watchdog
 import logging
-logging.basicConfig(level=logging.debug)
+import textwrap
+import logging
+logging.basicConfig(level=logging.INFO, force=True)
+logger = logging.getLogger(__name__)
 
 
 class EditorWorkspace:
     
     def __init__(self, editor):
         self._editor = editor
+        self._indentation = ''
+        
+    def _get_indentation(self, content):
+        dedented = textwrap.dedent(content)
+        lines = content.splitlines()
+        dedented_lines = dedented.splitlines()
+    
+        for original_line, dedented_line in zip(lines, dedented_lines):
+            # Skip empty lines
+            if original_line.strip():
+                # Count leading whitespace
+                orig_leading = len(original_line) - len(original_line.lstrip(' \t'))
+                ded_leading = len(dedented_line) - len(dedented_line.lstrip(' \t'))
+                # The difference should be the indentation sequence
+                indentation_length = orig_leading - ded_leading
+                if indentation_length > 0:
+                    return original_line[:indentation_length]
+                return ""
+        # If no non-empty lines, return no indentation
+        return ""
+        
+    def prepare(self, content):
+        if content is None:
+            return content
+        return textwrap.indent(content, self._indentation)             
 
     @property
     def content(self):
@@ -22,16 +50,25 @@ class EditorWorkspace:
     @property        
     def language(self):
         return self._editor.code_editor_language
-    
+        
+    def _normalize_line_breaks(self, text):
+        """Convert paragraph separators (U+2029) to standard newlines."""
+        if text:
+            return text.replace(u'\u2029', '\n')
+        return text        
+        
     def get(self):
         text_cursor = self._editor.textCursor()
         if text_cursor.hasSelection():
-            return text_cursor.selectedText(), self._editor.code_editor_language
-        return self._editor.toPlainText(), self._editor.code_editor_language
+            content = self._normalize_line_breaks(text_cursor.selectedText())
+        else:
+            content = self._editor.toPlainText()
+        self._indentation = self._get_indentation(content)
+        logger.info(f'content was indented by "{self._indentation}"')        
+        return content, self._editor.code_editor_language
 
     def set(self, content, language):
         text_cursor = self._editor.textCursor()
-        print(content)
         if text_cursor.hasSelection():
             text_cursor.insertText(content)
             self._editor.setTextCursor(text_cursor)
@@ -45,8 +82,6 @@ class EditorWorkspace:
         else:
             editor_content = self._editor.toPlainText()
 
-        if not editor_content:
-            return False
         if content in (editor_content, self.strip_content(editor_content)):
             return False
         return True

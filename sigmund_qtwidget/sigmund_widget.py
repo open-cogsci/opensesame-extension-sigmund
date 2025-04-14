@@ -250,9 +250,9 @@ class SigmundWidget(QWidget):
             message_text = data.get("message", "")
             self.chat_widget.append_message("ai_message", message_text)
             self.chat_widget.setEnabled(True)
-    
             # Attempt to apply workspace changes, if any
             workspace_content = data.get("workspace_content", "")
+            workspace_content = self._workspace_manager.prepare(workspace_content)
             workspace_language = data.get("workspace_language", "markdown")            
             on_connect = data.get("on_connect", False)
             if (

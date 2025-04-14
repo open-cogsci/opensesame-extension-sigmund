@@ -10,7 +10,10 @@ class WorkspaceManager:
         self.content = None
         self.language = None
         self.item_name = None
-    
+
+    def prepare(self, content):
+        return content
+        
     def get(self):
         if self.item_name not in self._sigmund.item_store:
             self._item = None
