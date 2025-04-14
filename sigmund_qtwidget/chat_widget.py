@@ -9,6 +9,11 @@ from qtpy.QtWidgets import (
     QSizePolicy,
     QApplication
 )
+# QtAwesome is optional, but it makes the UI look better.
+try:
+    import qtawesome as qta
+except ImportError:
+    pass
 from qtpy.QtCore import Signal, Qt, QPoint
 
 
@@ -82,7 +87,11 @@ class ChatWidget(QWidget):
         self._chat_input.enterPressed.connect(self._on_send)
         input_row.addWidget(self._chat_input)
 
-        self._send_button = QPushButton('➤')
+        self._send_button = QPushButton()
+        try:
+            self._send_button.setIcon(qta.icon('mdi6.send'))
+        except Exception:
+            self._send_button.setText('➤')
         # Make the button as tall as the text input
         self._send_button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
         self._send_button.clicked.connect(self._on_send)
