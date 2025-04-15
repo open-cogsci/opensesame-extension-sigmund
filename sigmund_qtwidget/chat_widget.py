@@ -211,7 +211,7 @@ class ChatWidget(QWidget):
             """)
             h_layout.addWidget(label)
             h_layout.addStretch()
-    
+        bubble_widget.adjustSize()
         self._chat_layout.addWidget(bubble_widget)
     
         # 3) Add a new stretch at the bottom
