@@ -257,6 +257,7 @@ class SigmundWidget(QWidget):
             on_connect = data.get("on_connect", False)
             if (
                 not on_connect and self._workspace_manager
+                and workspace_content is not None and workspace_content.strip()
                 and self._workspace_manager.has_changed(workspace_content,
                                                         workspace_language)
             ):
