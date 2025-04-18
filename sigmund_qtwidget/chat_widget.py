@@ -214,9 +214,11 @@ class ChatWidget(QWidget):
         bubble_widget.adjustSize()
         self._chat_layout.addWidget(bubble_widget)
     
-        # 3) Add a new stretch at the bottom
-        self._chat_layout.addStretch()
-    
+        # 3) Add a new stretch at the bottom if there is space, that is, if the
+        # vertical scroll bar is not active
+        if self._scroll_area.verticalScrollBar().isVisible() is False:
+            self._chat_layout.addStretch()
+
         # Resize container width
         self._chat_container.setFixedWidth(self._scroll_area.viewport().width())
 
