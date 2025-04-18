@@ -5,7 +5,6 @@ from pyqt_code_editor.code_editors import create_editor
 from pyqt_code_editor import watchdog
 import logging
 import textwrap
-import logging
 logging.basicConfig(level=logging.INFO, force=True)
 logger = logging.getLogger(__name__)
 
