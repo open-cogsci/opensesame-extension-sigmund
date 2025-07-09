@@ -1,10 +1,10 @@
+import re
 from qtpy.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
     QPushButton,
-    QLabel,
-    QScrollArea,
+    QTextBrowser,
     QPlainTextEdit,
     QSizePolicy,
     QApplication
@@ -14,7 +14,73 @@ try:
     import qtawesome as qta
 except ImportError:
     pass
-from qtpy.QtCore import Signal, Qt, QPoint
+from qtpy.QtCore import Signal, Qt
+from qtpy.QtGui import QFont
+
+
+DEFAULT_STYLESHEET = '''
+.user-message {
+    color: #00796b;    
+}
+
+.ai-message {
+    color: #333;    
+}
+
+.bubble {
+    margin: 10px;
+}
+
+
+/* Code blocks */
+pre {
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 8px;
+    margin: 8px 0;
+    overflow-x: auto;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+}
+
+code {
+    background-color: #f5f5f5;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+}
+
+/* Links */
+a {
+    color: #0066cc;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Lists */
+ul, ol {
+    margin: 8px 0;
+    padding-left: 20px;
+}
+
+/* Headers */
+h1, h2, h3, h4, h5, h6 {
+    margin: 12px 0 8px 0;
+    font-weight: 600;
+}
+
+h1 { font-size: 24px; }
+h2 { font-size: 20px; }
+h3 { font-size: 18px; }
+h4 { font-size: 16px; }
+h5 { font-size: 14px; }
+h6 { font-size: 13px; }
+'''
 
 
 class MultiLineInput(QPlainTextEdit):
@@ -44,7 +110,7 @@ class MultiLineInput(QPlainTextEdit):
 class ChatWidget(QWidget):
     """
     A chat interface with:
-      - A scrollable area for messages (bubbles).
+      - A QTextBrowser for messages (with HTML/CSS styling).
       - A multiline input (MultiLineInput).
       - A "Send" button.
       - A "Maximize/Minimize" button.
@@ -57,25 +123,39 @@ class ChatWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._is_maximized = False
+        self._messages = []  # Store messages as a list
         self._init_ui()
+        self._init_chat_browser_style()
 
     def _init_ui(self):
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Scrollable area for message bubbles
-        self._scroll_area = QScrollArea()
-        self._scroll_area.setWidgetResizable(True)
-        # Turn off horizontal scrolling
-        self._scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        main_layout.addWidget(self._scroll_area)
-
-        # A container for all message bubbles
-        self._chat_container = QWidget()
-        self._chat_layout = QVBoxLayout(self._chat_container)
-        self._chat_layout.setAlignment(Qt.AlignTop)
-
-        self._scroll_area.setWidget(self._chat_container)
+        # QTextBrowser for chat messages
+        self._chat_browser = QTextBrowser()
+        self._chat_browser.setOpenExternalLinks(True)
+        # Allow text selection but not editing
+        self._chat_browser.setReadOnly(True)
+        
+        # Set a font that supports emojis
+        font = QFont()
+        # Use a font stack that includes emoji support
+        # The exact fonts depend on the OS
+        import sys
+        if sys.platform == "win32":
+            # Windows: Segoe UI Emoji for emojis, fallback to default fonts
+            font.setFamily("Segoe UI, Segoe UI Emoji, Arial, sans-serif")
+        elif sys.platform == "darwin":
+            # macOS: Apple Color Emoji for emojis
+            font.setFamily("SF Pro Display, Apple Color Emoji, Helvetica Neue, sans-serif")
+        else:
+            # Linux: Noto Color Emoji or DejaVu
+            font.setFamily("Noto Sans, Noto Color Emoji, DejaVu Sans, sans-serif")
+        
+        font.setPointSize(10)  # Set a reasonable default size
+        self._chat_browser.setFont(font)
+        
+        main_layout.addWidget(self._chat_browser)
 
         # Input container with max height 100 (when not maximized)
         self._input_container = QWidget()
@@ -120,6 +200,33 @@ class ChatWidget(QWidget):
         main_layout.addWidget(self._input_container)
         self.setLayout(main_layout)
 
+    def _init_chat_browser_style(self):
+        """Initialize the chat browser with proper styling."""
+        # Set the stylesheet on the document - this is the proper way for QTextBrowser
+        self._chat_browser.document().setDefaultStyleSheet(DEFAULT_STYLESHEET)
+        # Set base HTML structure
+        self._render_messages()
+
+    def _render_messages(self):
+        """Render all messages with the current stylesheet."""
+        html_parts = []
+        
+        for msg_type, text in self._messages:
+            if html_parts:
+                html_parts.append('<hr>')
+            if msg_type == "user":
+                # Escape HTML for user messages
+                escaped_text = self._escape_html(text)
+                html_parts.append(f'<div class="user-message bubble">{escaped_text}</div>')
+            else:
+                # AI messages can contain HTML
+                html_parts.append(f'<div class="ai-message bubble">{text}</div>')
+        
+        html_parts.append('')
+        
+        # Set the HTML content
+        self._chat_browser.setHtml(''.join(html_parts))
+
     def _update_maximize_button_icon(self):
         """Update the maximize button icon based on current state."""
         try:
@@ -145,7 +252,7 @@ class ChatWidget(QWidget):
     def _maximize_input(self):
         """Expand the input to fill the entire widget."""
         self._is_maximized = True
-        self._scroll_area.setVisible(False)
+        self._chat_browser.setVisible(False)
         self._input_container.setMaximumHeight(16777215)  # Remove height restriction
         self._update_maximize_button_icon()
         # Give focus back to the input
@@ -154,56 +261,22 @@ class ChatWidget(QWidget):
     def _minimize_input(self):
         """Restore the input to its original size."""
         self._is_maximized = False
-        self._scroll_area.setVisible(True)
+        self._chat_browser.setVisible(True)
         self._input_container.setMaximumHeight(100)
         self._update_maximize_button_icon()
         # Give focus back to the input
         self._chat_input.setFocus()
-
-    def resizeEvent(self, event):
-        """
-        Ensure the chat container matches the scroll area's viewport,
-        so the message bubbles never exceed the available width.
-        """
-        super().resizeEvent(event)
-        # Match the chat container width to the available viewport
-        if self._scroll_area.viewport():
-            self._chat_container.setFixedWidth(self._scroll_area.viewport().width())
 
     def _on_text_changed(self):
         """Enable the send button when >= 3 chars in the input."""
         text = self._chat_input.toPlainText().strip()
         self._send_button.setEnabled(len(text) >= 3)
 
-    def scroll_to_bottom(self):        
-        # Ensure the layout is updated with any new widgets.
+    def scroll_to_bottom(self):
+        """Scroll to the bottom of the chat."""
         QApplication.processEvents()
-        
-        if self._chat_layout.count() == 0:
-            return
-        
-        # Get the last widget in the chat layout.
-        last_index = self._chat_layout.count() - 1
-        last_item = self._chat_layout.itemAt(last_index)
-        last_widget = last_item.widget()
-        
-        # If there's no widget, do nothing.
-        if not last_widget:
-            return
-        
-        # Convert the widget's top-left corner to the chat_container's coordinate system.
-        widget_pos_in_container = last_widget.mapTo(self._chat_container, QPoint(0, 0))
-        # The y-position of the bottom edge of the last widget.
-        bottom_edge = widget_pos_in_container.y() + last_widget.height()
-        
-        # The height of the viewport we can see.
-        viewport_height = self._scroll_area.viewport().height()
-        
-        # Calculate how far we need to scroll so that the bottom edge is fully visible.
-        scroll_value = bottom_edge - viewport_height
-        
-        # Make sure we don't scroll past the top.
-        self._scroll_area.verticalScrollBar().setValue(max(scroll_value, 0))
+        scrollbar = self._chat_browser.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
 
     def _on_send(self):
         text = self._chat_input.toPlainText().strip()
@@ -215,90 +288,65 @@ class ChatWidget(QWidget):
         # If maximized, minimize before sending
         if self._is_maximized:
             self._minimize_input()
-        self._add_message_bubble(text, "user_message")
+        self._add_message(text, "user")
         # Emit signal so the extension can handle server logic
         self.user_message_sent.emit(text)
 
-    def _add_message_bubble(self, text, msg_type):
-        """
-        Adds a message bubble to the chat layout.
-        - msg_type: 'user_message' or 'ai_message'
-        """
-        # 1) Remove the last item if it's a stretch (so we don't keep stacking them)
-        count = self._chat_layout.count()
-        if count > 0:
-            item = self._chat_layout.itemAt(count - 1)
-            if item and item.spacerItem():
-                self._chat_layout.removeItem(item)
-    
-        # 2) Create the bubble widget
-        bubble_widget = QWidget()
-        bubble_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-    
-        h_layout = QHBoxLayout()
-        bubble_widget.setLayout(h_layout)
-    
-        label = QLabel()
-        label.setWordWrap(True)
-        label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-        # Make text selectable with mouse
-        label.setTextInteractionFlags(Qt.TextSelectableByMouse)
-    
-        if msg_type == "user_message":
-            label.setText(text)
-            label.setStyleSheet("""
-                QLabel {
-                    background-color: #FFFDE7;
-                    border-radius: 8px;
-                    padding: 8px;
-                    white-space: pre-wrap;
-                }
-            """)
-            # Right align
-            h_layout.addStretch()
-            h_layout.addWidget(label)
-        else:
-            label.setTextFormat(Qt.RichText)
-            label.setText(text)
-            label.setStyleSheet("""
-                QLabel {
-                    background-color: #ffffff;
-                    border-radius: 8px;
-                    padding: 8px;
-                    white-space: pre-wrap;
-                }
-                QLabel pre {
-                    white-space: pre-wrap !important;
-                }
-            """)
-            h_layout.addWidget(label)
-            h_layout.addStretch()
-        bubble_widget.adjustSize()
-        self._chat_layout.addWidget(bubble_widget)
-    
-        # 3) Add a new stretch at the bottom if there is space, that is, if the
-        # vertical scroll bar is not active
-        if self._scroll_area.verticalScrollBar().isVisible() is False:
-            self._chat_layout.addStretch()
+    def _escape_html(self, text):
+        """Escape HTML special characters."""
+        return (text
+                .replace('&', '&')
+                .replace('<', '<')
+                .replace('>', '>')
+                .replace('"', '"')
+                .replace("'", '\''))
 
-        # Resize container width
-        self._chat_container.setFixedWidth(self._scroll_area.viewport().width())
+    def _add_message(self, text, msg_type):
+        """
+        Adds a message to the chat browser.
+        - msg_type: 'user' or 'ai'
+        - text: For user messages, plain text. For AI messages, can contain HTML.
+        """
+        # Store the message
+        self._messages.append((msg_type, text))
+        # Re-render all messages
+        self._render_messages()
+        # Scroll to bottom
+        self.scroll_to_bottom()
 
     def append_message(self, msg_type, text, scroll=True):
         """
         Public method for the extension to add a message from outside,
         e.g. for an AI reply.
+        - msg_type: 'user_message' or 'ai_message' (for compatibility)
         """
-        self._add_message_bubble(text, msg_type)
+        # Map old message types to new ones
+        if msg_type == 'user_message':
+            self._add_message(text, 'user')
+        else:
+            self._add_message(self.clean_ai_message(text), 'ai')
+        
         if scroll:
             self.scroll_to_bottom()
 
     def clear_messages(self):
         """
-        Removes every message bubble from the chat layout.
+        Clears all messages from the chat browser.
         """
-        while self._chat_layout.count():
-            item = self._chat_layout.takeAt(0)
-            widget = item.widget()
-            if widget is not None:
-                widget.deleteLater()
+        self._messages.clear()
+        self._render_messages()
+        
+    def clean_ai_message(self, content):
+        """
+        Removes Anthropic-style thinking blocks from the message
+        """
+        sig_pattern = r'<div\s+class="thinking_block_signature">(.*?)</div>'
+        cont_pattern = r'<div\s+class="thinking_block_content">(.*?)</div>'    
+        sig_match = re.search(sig_pattern, content)
+        if sig_match:
+            content = re.sub(sig_pattern, '', content, count=1)    
+        cont_match = re.search(cont_pattern, content, re.MULTILINE | re.DOTALL)
+        if cont_match:
+            content = re.sub(cont_pattern, '', content, count=1,
+                             flags=re.MULTILINE | re.DOTALL)
+        return content.strip()
