@@ -1,6 +1,7 @@
 import sys
 from qtpy.QtWidgets import QApplication, QHBoxLayout, QWidget
 from sigmund_qtwidget.sigmund_widget import SigmundWidget
+from sigmund_qtwidget.diff_dialog import DiffDialog
 from pyqt_code_editor.code_editors import create_editor
 from pyqt_code_editor import watchdog
 import logging
@@ -115,4 +116,6 @@ if __name__ == "__main__":
     win = MainWindow()    
     win.resize(1200, 800)
     win.show()
+    dd = DiffDialog(win, 'AI test message', 'old_content', 'new_content')
+    dd.exec_()    
     sys.exit(app.exec_())

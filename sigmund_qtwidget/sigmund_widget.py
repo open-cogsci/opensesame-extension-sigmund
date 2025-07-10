@@ -243,12 +243,12 @@ class SigmundWidget(QWidget):
 
         elif action == 'user_message':
             message_text = data.get("message", "")
-            self.chat_widget.append_message("user_message", message_text)
+            self.chat_widget.append_message("user", message_text)
 
         elif action == "ai_message":
             # Show the AI message
             message_text = data.get("message", "")
-            self.chat_widget.append_message("ai_message", message_text)
+            self.chat_widget.append_message("ai", message_text)
             self.chat_widget.setEnabled(True)
             # Attempt to apply workspace changes, if any
             workspace_content = data.get("workspace_content", "")
@@ -278,9 +278,9 @@ class SigmundWidget(QWidget):
 {traceback.format_exc()}
 ```
 '''
-                        self.chat_widget.append_message('user_message', err_msg)
+                        self.chat_widget.append_message('user', err_msg)
                         if not self._retry:
-                            self.chat_widget.append_message('ai_message',
+                            self.chat_widget.append_message('ai',
                                 'Maximum number of attempts exceeded.')
                         else:
                             self.send_user_message(err_msg, workspace_content,

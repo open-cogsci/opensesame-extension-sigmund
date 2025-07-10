@@ -1,8 +1,9 @@
 import difflib
 from qtpy.QtWidgets import QVBoxLayout, QDialogButtonBox, QLabel, \
-    QSizePolicy, QScrollArea, QWidget, QDialog, QSplitter
+    QSizePolicy, QDialog, QSplitter
 from qtpy.QtCore import Qt
 import logging
+from .chat_browser import ChatBrowser
 logger = logging.getLogger(__name__)
 try:
     from pyqt_code_editor.code_editors import create_editor
@@ -45,28 +46,12 @@ class DiffDialog(QDialog):
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        # The info label contains the AI message
-        info_label = QLabel(message)
-        info_label.setTextFormat(Qt.RichText)
-        info_label.setWordWrap(True)
-        info_label.setAlignment(Qt.AlignTop)
-        info_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
-
-        # If the label is too tall, wrap it in a scroll area
-        if info_label.sizeHint().height() > MAX_MESSAGE_HEIGHT:
-            scroll_area = QScrollArea(self)
-            scroll_area.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
-            scroll_area.setWidgetResizable(True)
-
-            message_widget = QWidget(self)
-            message_layout = QVBoxLayout(message_widget)
-            message_layout.addWidget(info_label)
-            scroll_area.setWidget(message_widget)
-
-            top_widget = scroll_area
-        else:
-            top_widget = info_label
-
+        # Use ChatBrowser to display the AI message
+        self.message_browser = ChatBrowser(self)
+        self.message_browser.append_message(message, 'ai')
+        self.message_browser.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+        self.message_browser.setMaximumHeight(MAX_MESSAGE_HEIGHT)
+        
         # Create the diff view
         if create_editor:
             self.diff_view = create_editor(language='diff')
@@ -89,9 +74,9 @@ class DiffDialog(QDialog):
                 self.diff_view.setPlainText("No changes suggested.")
         self.diff_view.setReadOnly(True)
 
-        # Create a vertical splitter to hold the top widget and the diff
+        # Create a vertical splitter to hold the message browser and the diff
         splitter = QSplitter(Qt.Vertical)
-        splitter.addWidget(top_widget)
+        splitter.addWidget(self.message_browser)
         splitter.addWidget(self.diff_view)
         layout.addWidget(splitter)
 
