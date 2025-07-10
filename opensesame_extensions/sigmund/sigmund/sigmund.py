@@ -23,6 +23,8 @@ class Sigmund(BaseExtension):
         self._visible = False
         self._current_exception = None
         self._workspace_manager = workspace.WorkspaceManager(self)
+        if cfg.sigmund_visible:
+            self.activate()
 
     def event_end_experiment(self, ret_val):
         if ret_val is None or isinstance(ret_val, UserAborted):
@@ -81,13 +83,13 @@ Ask Sigmund to fix this
         """
         # Toggle
         if self._visible:
-            self._visible = False
+            cfg.sigmund_visible = self._visible = False
             self.set_checked(False)
             if self._sigmund_widget:
                 self._dock_widget.hide()
             return
         # Show
-        self._visible = True
+        cfg.sigmund_visible = self._visible = True
         self.set_checked(True)
         # Create the dock widget if it doesn't exist
         if self._sigmund_widget is None:

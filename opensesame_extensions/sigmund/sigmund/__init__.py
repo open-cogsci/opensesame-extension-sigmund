@@ -14,7 +14,8 @@ menu = {
     "submenu": "Tools"
 }
 settings = {
-    "sigmund_token": ""
+    "sigmund_token": "",
+    "sigmund_visible": True
 }
 modes = ["default", "ide"]
 priority = 1000
