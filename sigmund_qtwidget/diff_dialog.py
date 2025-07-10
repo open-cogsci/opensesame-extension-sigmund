@@ -48,7 +48,7 @@ class DiffDialog(QDialog):
 
         # Use ChatBrowser to display the AI message
         self.message_browser = ChatBrowser(self)
-        self.message_browser.append_message(message, 'ai')
+        self.message_browser.append_message('ai', message)
         self.message_browser.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
         self.message_browser.setMaximumHeight(MAX_MESSAGE_HEIGHT)
         
