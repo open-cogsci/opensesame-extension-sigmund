@@ -56,8 +56,9 @@ class ChatBrowser(QTextBrowser):
                 html_parts.append('<hr>')
             
             if msg_type == "user":
-                # Escape HTML for user messages
-                escaped_text = self._escape_html(text)
+                # Escape HTML for user messages, but add br tags instead of
+                # newlines, which are ignored by the text browser
+                escaped_text = self._escape_html(text).replace('\n', '<br>')
                 html_parts.append(f'<div class="user-message bubble">{escaped_text}</div>')
             else:
                 # AI messages can contain HTML
