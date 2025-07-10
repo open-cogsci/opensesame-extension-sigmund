@@ -1,11 +1,18 @@
-# SigmundAI copilot extension for OpenSesame/ Rapunzel
+# SigmundAI copilot extension for OpenSesame and Sigmund Analyst
 
 Copyright 2025 Sebastiaan Mathôt (@smathot)
 
 
 ## About
 
-An extension that integrates with <https://sigmundai.eu>, and allows you to work with SigmundAI directly from the OpenSesame user interface.
+An extension that integrates with <https://sigmundai.eu>, and allows you to work with SigmundAI directly from the user interfaces of OpenSesame and Sigmund Analyst.
+
+See also:
+
+- <https://github.com/open-cogsci/sigmund-ai>
+- <https://github.com/open-cogsci/sigmund-analyst>
+- <https://github.com/open-cogsci/opensesame>
+
 
 ## License
 
