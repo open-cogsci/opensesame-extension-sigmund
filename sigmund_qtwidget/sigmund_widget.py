@@ -167,7 +167,7 @@ class SigmundWidget(QWidget):
                 )
             else:
                 state_label.setText(
-                    "Open https://sigmundai.eu in a browser and log in. "
+                    "Open <a href='https://sigmundai.eu'>sigmundai.eu</a> in a browser and log in. "
                     "OpenSesame will automatically connect."
                 )
             layout.addWidget(state_label)
