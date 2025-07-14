@@ -97,7 +97,8 @@ Ask Sigmund to fix this
         self.set_checked(True)
         # Create the dock widget if it doesn't exist
         if self._sigmund_widget is None:
-            self._dock_widget = SigmundDockWidget(self.main_window)
+            self._dock_widget = SigmundDockWidget(self.main_window,
+                                                  application='OpenSesame')
             self._sigmund_widget = self._dock_widget.sigmund_widget
             if settings:
                 font_size = settings.font_size

@@ -14,12 +14,12 @@ class SigmundDockWidget(QDockWidget):
 
     close_requested = Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, application='Unknown'):
         super().__init__(parent)
         self.setWindowTitle("Sigmund")
         self.setObjectName("sigmund_dock_widget")
         # Create our SigmundWidget and place it inside this dock
-        self.sigmund_widget = SigmundWidget(self)
+        self.sigmund_widget = SigmundWidget(self, application)
         self.setWidget(self.sigmund_widget)
         # Override close event and emit a signal for the extension to handle
         def _close_event_override(event):

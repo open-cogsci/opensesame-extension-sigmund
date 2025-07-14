@@ -11,6 +11,15 @@ import logging
 logging.basicConfig(level=logging.INFO, force=True)
 logger = logging.getLogger(__name__)
 
+WELCOME_MSG = """Sigmund is your AI research assistant
+<br><br>
+Open <a href='https://sigmundai.eu'>sigmundai.eu</a> in a browser and log in. 
+{application} will automatically connect."""
+NOT_LISTENING_MSG = """Failed to listen to Sigmund.
+Server failed to start."""
+FAILED_MSG = """Failed to listen to Sigmund.
+Maybe another application is already listening?"""
+
 
 class SigmundWidget(QWidget):
     """
@@ -21,12 +30,13 @@ class SigmundWidget(QWidget):
     server_state_changed = Signal(str)  # Emitted when server state changes
     token_received = Signal(str)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, application='Unknown'):
         super().__init__(parent)
 
         # State
         self._state = 'not_listening'
         self._server_process = None
+        self._application = application
         self._to_main_queue = None
         self._to_server_queue = None
         self._retry = 1
@@ -74,6 +84,10 @@ class SigmundWidget(QWidget):
             self._update_state('listening')
             # Start polling
             self._poll_timer.start(100)
+            self._to_server_queue.put(json.dumps({
+                "action": "connector_name",
+                "message": self._application
+            }))            
             
     def stop_server(self):
         """
@@ -158,18 +172,12 @@ class SigmundWidget(QWidget):
             state_label.setAlignment(Qt.AlignCenter)
     
             if self._state == 'failed':
-                state_label.setText(
-                    "Failed to listen to Sigmund.\nMaybe another application is already listening?"
-                )
+                state_label.setText(FAILED_MSG)
             elif self._state == 'not_listening':
-                state_label.setText(
-                    "Failed to listen to Sigmund.\nServer failed to start."
-                )
+                state_label.setText(NOT_LISTENING_MSG)
             else:
-                state_label.setText(
-                    "Open <a href='https://sigmundai.eu'>sigmundai.eu</a> in a browser and log in. "
-                    "OpenSesame will automatically connect."
-                )
+                state_label.setText(WELCOME_MSG.format(
+                    application=self._application))
             layout.addWidget(state_label)
             layout.addStretch()
     
