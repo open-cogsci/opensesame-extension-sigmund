@@ -9,6 +9,10 @@ from libqtopensesame.misc.config import cfg
 from . import opensesame_workspace as workspace
 from sigmund_qtwidget.sigmund_dock_widget import SigmundDockWidget
 from libqtopensesame.misc.translate import translation_context
+try:
+    from pyqt_code_editor import settings
+except ImportError:
+    settings = None
 _ = translation_context('sigmund', category='extension')
 
 
@@ -95,8 +99,11 @@ Ask Sigmund to fix this
         if self._sigmund_widget is None:
             self._dock_widget = SigmundDockWidget(self.main_window)
             self._sigmund_widget = self._dock_widget.sigmund_widget
-            self._sigmund_widget.setStyleSheet(
-                f'font-size: {cfg.pyqode_font_size}pt;')
+            if settings:
+                font_size = settings.font_size
+            else:
+                font_size = cfg.pyqode_font_size
+            self._sigmund_widget.setStyleSheet(f'font-size: {font_size}pt;')
             self._sigmund_widget.set_workspace_manager(self._workspace_manager)
             self.main_window.addDockWidget(Qt.RightDockWidgetArea,
                                            self._dock_widget)
