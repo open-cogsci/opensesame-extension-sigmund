@@ -134,13 +134,6 @@ Ask Sigmund to fix this
                 timeout=5000
             )
         elif new_state == 'connected':
-            # Possibly notify the user that a client connected
-            self.extension_manager.fire(
-                'notify',
-                message=_("A client has connected to Sigmund!"),
-                category='info',
-                timeout=5000
-            )
             label = QLabel()
             label.setText(_("<small>Tip: Select an item to discuss it"))
             label.setObjectName('control-info')
