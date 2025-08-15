@@ -1,5 +1,6 @@
 import os
 import json
+import sys
 import traceback
 from multiprocessing import Process, Queue
 from qtpy.QtWidgets import QWidget, QVBoxLayout, QLabel
@@ -15,6 +16,8 @@ WELCOME_MSG = """Sigmund is your AI research assistant
 <br><br>
 Open <a href='https://sigmundai.eu'>sigmundai.eu</a> in a browser and log in. 
 {application} will automatically connect."""
+if sys.platform == 'darwin':
+    WELCOME_MSG += '<br><br>Safari is not supported.'
 NOT_LISTENING_MSG = """Failed to listen to Sigmund.
 Server failed to start."""
 FAILED_MSG = """Failed to listen to Sigmund.
