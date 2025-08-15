@@ -96,12 +96,17 @@ class ChatBrowser(QTextBrowser):
     def _clean_ai_message(self, content):
         """Removes Anthropic-style thinking blocks from the message."""
         sig_pattern = r'<div\s+class="thinking_block_signature">(.*?)</div>'
-        cont_pattern = r'<div\s+class="thinking_block_content">(.*?)</div>'    
+        cont_pattern = r'<div\s+class="thinking_block_content">(.*?)</div>'
+        info_pattern = r'<div\s+class="message-info"\s+markdown="1">(.*?)</div>'
+        
+        # Single line pattern
         sig_match = re.search(sig_pattern, content)
         if sig_match:
             content = re.sub(sig_pattern, '', content, count=1)    
-        cont_match = re.search(cont_pattern, content, re.MULTILINE | re.DOTALL)
-        if cont_match:
-            content = re.sub(cont_pattern, '', content, count=1,
-                             flags=re.MULTILINE | re.DOTALL)
-        return content.strip()        
+        # Multiline patterns
+        for pattern in (cont_pattern, info_pattern):
+            match = re.search(pattern, content, re.MULTILINE | re.DOTALL)
+            if match:
+                content = re.sub(pattern, '', content, count=1,
+                                 flags=re.MULTILINE | re.DOTALL)
+        return content.strip()

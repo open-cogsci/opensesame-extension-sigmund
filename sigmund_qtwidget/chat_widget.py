@@ -1,4 +1,3 @@
-import re
 from qtpy.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -15,6 +14,9 @@ except ImportError:
 from qtpy.QtCore import Signal, Qt
 from .chat_browser import ChatBrowser
 
+PLACEHOLDER_TEXT = "Enter your message"
+PLACEHOLDER_BUSY_TEXT = "Sigmund is thinking and typing …"
+
 
 class MultiLineInput(QPlainTextEdit):
     """
@@ -26,7 +28,7 @@ class MultiLineInput(QPlainTextEdit):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setPlaceholderText("Enter your message")
+        self.setPlaceholderText(PLACEHOLDER_TEXT)
 
     def keyPressEvent(self, event):
         # Pressing Enter → send message (unless Shift is pressed).
@@ -175,3 +177,8 @@ class ChatWidget(QWidget):
     def clear_messages(self):
         self._chat_browser.clear_messages()
     
+
+    def setEnabled(self, enabled=True):
+        self._chat_input.setPlaceholderText(PLACEHOLDER_TEXT if enabled
+                                            else PLACEHOLDER_BUSY_TEXT)
+        super().setEnabled(enabled)

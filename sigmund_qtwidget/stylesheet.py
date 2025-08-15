@@ -7,6 +7,10 @@ DEFAULT_STYLESHEET = '''
     color: #333;
 }
 
+.message-info {
+    color: gray;
+}
+
 .bubble {
     margin: 10px;
 }

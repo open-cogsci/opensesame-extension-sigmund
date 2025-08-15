@@ -135,8 +135,9 @@ Ask Sigmund to fix this
             )
         elif new_state == 'connected':
             label = QLabel()
-            label.setText(_("<small>Tip: Select an item to discuss it"))
+            label.setText(_("<small>Tip: Enable OpenSesame expert knowledge in the web interface, and then select an item here to discuss it.</small>"))
             label.setObjectName('control-info')
+            label.setWordWrap(True)
             self._sigmund_widget.chat_widget.layout().addWidget(label)
 
     def icon(self):
