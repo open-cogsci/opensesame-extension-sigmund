@@ -17,7 +17,7 @@ WELCOME_MSG = """Sigmund is your AI research assistant
 Open <a href='https://sigmundai.eu'>sigmundai.eu</a> in a browser and log in. 
 {application} will automatically connect."""
 if sys.platform == 'darwin':
-    WELCOME_MSG += '<br><br>Safari is not supported.'
+    WELCOME_MSG += '<br><br>Firefox and Chrome are supported, but Safari is currently not.'
 NOT_LISTENING_MSG = """Failed to listen to Sigmund.
 Server failed to start."""
 FAILED_MSG = """Failed to listen to Sigmund.
