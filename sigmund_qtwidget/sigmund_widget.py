@@ -11,6 +11,7 @@ from .diff_dialog import DiffDialog
 import logging
 logging.basicConfig(level=logging.INFO, force=True)
 logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 WELCOME_MSG = """Sigmund is your AI research assistant
 <br><br>
@@ -89,7 +90,7 @@ class SigmundWidget(QWidget):
             self._poll_timer.start(100)
             self._to_server_queue.put(json.dumps({
                 "action": "connector_name",
-                "message": self._application
+                "message": f'{self._application} ({os.getpid()})'
             }))            
             
     def stop_server(self):
