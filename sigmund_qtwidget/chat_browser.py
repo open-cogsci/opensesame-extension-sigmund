@@ -2,7 +2,6 @@ import re
 import sys
 from qtpy.QtWidgets import QTextBrowser, QApplication
 from qtpy.QtGui import QFont
-from .stylesheet import DEFAULT_STYLESHEET
 
 
 class ChatBrowser(QTextBrowser):
@@ -32,7 +31,9 @@ class ChatBrowser(QTextBrowser):
         font.setPointSize(10)
         self.setFont(font)
         
-        # Set the stylesheet on the document
+        # Set the stylesheet on the document. We only load the stylesheet module
+        # here because the app needs to be initialized for darkmode detection.
+        from .stylesheet import DEFAULT_STYLESHEET
         self.document().setDefaultStyleSheet(DEFAULT_STYLESHEET)
         
         # Initialize with empty content
