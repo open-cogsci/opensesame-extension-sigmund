@@ -1,9 +1,9 @@
 import textwrap
 import re
+import json
 
 
 class WorkspaceManager:
-    
     
     def __init__(self, sigmund):
         self._sigmund = sigmund

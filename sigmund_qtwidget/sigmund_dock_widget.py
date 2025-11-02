@@ -15,13 +15,16 @@ class SigmundDockWidget(QDockWidget):
 
     close_requested = Signal()
 
-    def __init__(self, parent=None, application='Unknown'):
+    def __init__(self, parent=None, application='Unknown',
+                 sigmund_widget_cls=None):
         super().__init__(parent)
         self.setWindowTitle("Sigmund")
         self.setObjectName("sigmund_dock_widget")
 
         # Create our SigmundWidget and place it inside this dock
-        self.sigmund_widget = SigmundWidget(self, application)
+        if sigmund_widget_cls is None:
+            self.sigmund_widget_cls = SigmundWidget
+        self.sigmund_widget = sigmund_widget_cls(self, application)
         self.setWidget(self.sigmund_widget)
 
         # Track desired visibility and server running state

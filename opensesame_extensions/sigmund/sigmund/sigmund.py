@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QLabel
 from libopensesame.exceptions import UserAborted
@@ -8,6 +9,7 @@ from libqtopensesame.extensions import BaseExtension
 from libqtopensesame.misc.config import cfg
 from . import opensesame_workspace as workspace
 from sigmund_qtwidget.sigmund_dock_widget import SigmundDockWidget
+from sigmund_qtwidget.sigmund_widget import SigmundWidget
 from libqtopensesame.misc.translate import translation_context
 try:
     from pyqt_code_editor import settings
@@ -16,12 +18,27 @@ except ImportError:
 _ = translation_context('sigmund', category='extension')
 
 
+class OpenSesameSigmundWidget(SigmundWidget):
+    """Extends the default Sigmund widget with OpenSesame-specific commands
+    and settings.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._transient_settings = {
+            # 'collection_opensesame': 'true',
+            'tool_opensesame_select_item': 'true'
+        }
+    
+    def run_command_select_item(self, item_name=None):
+        if not item_name or item_name not in self.sigmund_extension.item_store:
+            return f'Item {item_name} does not exist.'
+        self.sigmund_extension.item_store[item_name].open_tab()
+        return f'Item {item_name} is now selected.'
+        
+
 class Sigmund(BaseExtension):
 
     def event_startup(self):
-        """
-        Initialize the extension state.
-        """
         self._state = 'not_listening'
         self._sigmund_widget = None
         self._visible = False
@@ -40,7 +57,6 @@ class Sigmund(BaseExtension):
 <a id="read-more" class="important-button" href="opensesame://event.sigmund_fix_exception">
 Ask Sigmund to fix this
 </a>'''
-
 
     def event_sigmund_fix_exception(self):
         if self._current_exception is None:
@@ -97,15 +113,18 @@ Ask Sigmund to fix this
         self.set_checked(True)
         # Create the dock widget if it doesn't exist
         if self._sigmund_widget is None:
-            self._dock_widget = SigmundDockWidget(self.main_window,
-                                                  application='OpenSesame')
+            self._dock_widget = SigmundDockWidget(
+                self.main_window, application='OpenSesame',
+                sigmund_widget_cls=OpenSesameSigmundWidget)
             self._sigmund_widget = self._dock_widget.sigmund_widget
+            self._sigmund_widget.sigmund_extension = self
             if settings:
                 font_size = settings.font_size
             else:
                 font_size = cfg.pyqode_font_size
             self._sigmund_widget.setStyleSheet(f'font-size: {font_size}pt;')
             self._sigmund_widget.set_workspace_manager(self._workspace_manager)
+            self._sigmund_widget.sigmund_extension = self
             self.main_window.addDockWidget(Qt.RightDockWidgetArea,
                                            self._dock_widget)
             self._dock_widget.close_requested.connect(self.activate)

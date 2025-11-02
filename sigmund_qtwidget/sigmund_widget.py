@@ -11,7 +11,6 @@ from .diff_dialog import DiffDialog
 import logging
 logging.basicConfig(level=logging.INFO, force=True)
 logger = logging.getLogger(__name__)
-logger = logging.getLogger(__name__)
 
 WELCOME_MSG = """Sigmund is your AI research assistant
 <br><br>
@@ -43,6 +42,7 @@ class SigmundWidget(QWidget):
         self._application = application
         self._to_main_queue = None
         self._to_server_queue = None
+        self._transient_settings = None
         self._retry = 1
 
         # References to OS-specific things (injected/set by extension)
@@ -139,7 +139,8 @@ class SigmundWidget(QWidget):
             "action": "user_message",
             "message": text,
             "workspace_content": workspace_content,
-            "workspace_language": workspace_language
+            "workspace_language": workspace_language,
+            "transient_settings": json.dumps(self._transient_settings) if self._transient_settings else None
         }
         self._to_server_queue.put(json.dumps(user_json))
 
@@ -264,11 +265,12 @@ class SigmundWidget(QWidget):
             self.chat_widget.setEnabled(True)
             # Attempt to apply workspace changes, if any
             workspace_content = data.get("workspace_content", "")
-            workspace_content = self._workspace_manager.prepare(workspace_content)
+            is_command = self.run_command(workspace_content)
+            workspace_content = self._workspace_manager.prepare(workspace_content)            
             workspace_language = data.get("workspace_language", "markdown")            
             on_connect = data.get("on_connect", False)
             if (
-                not on_connect and self._workspace_manager
+                not is_command and not on_connect and self._workspace_manager
                 and workspace_content is not None and workspace_content.strip()
                 and self._workspace_manager.has_changed(workspace_content,
                                                         workspace_language)
@@ -301,7 +303,43 @@ class SigmundWidget(QWidget):
     
         else:
             logger.error(f'invalid or unhandled incoming message: {data}')
-
+            
+    def run_command(self, content):
+        """Special commands can be received as JSON objects in the workspace.
+        
+        Example:
+        
+        {
+            "command": "select_item",
+            "item_name": "some welcome"
+        }
+        
+        This will trigger a function call to `run_command_select_item()`,
+        which should be implemented in a subclass. All other arguments, in 
+        this case only `item_name`, are passed as keyword arguments to this
+        function. The return value of the function is passed back as a
+        user message to Sigmund.
+        """
+        if not isinstance(content, str):
+            return False
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError:
+            return False
+        command = data.pop('command', None)
+        if command is None:
+            logger.warning(f'no command in JSON data: {content}')
+            return False
+        fnc_name = f'run_command_{command}'
+        if hasattr(self, fnc_name):
+            logger.info(f'executing command from JSON data: {content}')
+            result = getattr(self, fnc_name)(**data)
+            if result:
+                self.send_user_message(result)
+            return True
+        logger.warning(f'no function for command from JSON data: {content}')
+        return False
+        
     def _request_token(self):
         if self._to_server_queue:
             self._to_server_queue.put(json.dumps({"action": "get_token"}))
