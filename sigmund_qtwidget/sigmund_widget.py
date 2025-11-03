@@ -265,16 +265,19 @@ class SigmundWidget(QWidget):
             self.chat_widget.setEnabled(True)
             # Attempt to apply workspace changes, if any
             workspace_content = data.get("workspace_content", "")
-            is_command = self.run_command(workspace_content)
             workspace_content = self._workspace_manager.prepare(workspace_content)            
             workspace_language = data.get("workspace_language", "markdown")            
             on_connect = data.get("on_connect", False)
             if (
-                not is_command and not on_connect and self._workspace_manager
+                not on_connect and self._workspace_manager
                 and workspace_content is not None and workspace_content.strip()
                 and self._workspace_manager.has_changed(workspace_content,
                                                         workspace_language)
             ):
+                # If the workspace content is a run command, we don't process it
+                # further.
+                if self.run_command(workspace_content):
+                    return
                 # Show diff, and if accepted, update
                 result = DiffDialog(
                     self,

@@ -1,5 +1,5 @@
-from pathlib import Path
 import json
+from pathlib import Path
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QLabel
 from libopensesame.exceptions import UserAborted
@@ -16,6 +16,8 @@ try:
 except ImportError:
     settings = None
 _ = translation_context('sigmund', category='extension')
+
+MAX_POOL_FILES = 20
 
 
 class OpenSesameSigmundWidget(SigmundWidget):
@@ -34,6 +36,57 @@ class OpenSesameSigmundWidget(SigmundWidget):
             return f'Item {item_name} does not exist.'
         self.sigmund_extension.item_store[item_name].open_tab()
         return f'Item {item_name} is now selected.'
+        
+    def _item_struct(self, item):
+        d = {
+            'item_name': item.name,
+            'item_type': item.item_type,
+        }
+        if item.item_type == 'loop':
+            d['variables'] = item.dm.column_names
+        if item.direct_children():
+            d['children'] = [
+                self._item_struct(self.sigmund_extension.item_store[child])
+                for child in item.direct_children()
+            ]
+        return d
+        
+    def _experiment_struct(self):
+        """Recursively builds the experiment structure from items. Right now,
+        item_name and item_type are included for all items. Children are
+        included if available. Variables are only included for loop items. Files
+        from the file pool are also included.
+        """
+        exp_struct = self._item_struct(
+            self.sigmund_extension.item_store[
+                self.sigmund_extension.experiment.var.start
+            ]
+        )
+        pool_files = self.sigmund_extension.pool.files()
+        if len(pool_files) > MAX_POOL_FILES:
+            pool_files = pool_files[:MAX_POOL_FILES] + ['(… more files not shown)']
+        exp_struct['file_pool'] = pool_files
+        return exp_struct
+        
+    def send_user_message(self, text, *args, **kwargs):        
+        text = f'''We're working on an OpenSesame experiment with the following structure:
+        
+<experiment_structure>
+{json.dumps(self._experiment_struct(), indent=2)}
+</experiment_structure>
+
+''' + text
+        super().send_user_message(text, *args, **kwargs)
+        
+    def _on_message_received(self, data):
+        action = data.get("action", None)
+        # Strip the experiment structure message if present
+        if action == 'user_message':
+            message_text = data.get("message", "")
+            needle = '</experiment_structure>'
+            message_text = message_text[message_text.find(needle) + len(needle):]
+            data['message'] = message_text
+        super()._on_message_received(data)
         
 
 class Sigmund(BaseExtension):

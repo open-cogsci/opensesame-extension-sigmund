@@ -1,6 +1,5 @@
 import textwrap
 import re
-import json
 
 
 class WorkspaceManager:
@@ -60,7 +59,8 @@ class WorkspaceManager:
         self._sigmund.main_window.regenerate(content)
             
     def _prepare_general_script(self):
-        script = f'''# Important instructions: You are now editing the script of an OpenSesame experiment. The scripting language is OpenSesame script, a domain-specific language, and not Python or JavaScript (although Python and JavaScript may be embedded). You can use f-string syntax to include variables and Python expressions, like this: some_keyword="Some value with a {{variable_or_expression}}". Only update the workspace with modifications of this script. Do not put any other content into the workspace. Do not include this instruction comment in your reply.
+        script = f'''# Important instructions: You are now viewing the script of an OpenSesame experiment. The scripting language is OpenSesame script, a domain-specific language, and not Python or JavaScript (although Python and JavaScript may be embedded). You can use f-string syntax to include variables and Python expressions, like this: some_keyword="Some value with a {{variable_or_expression}}". Only update the workspace with modifications of this script. Do not put any other content into the workspace. Do not include this instruction comment in your reply.
+
 {self._sigmund.experiment.to_string()}
 '''
         return script, 'opensesame'
@@ -76,6 +76,7 @@ class WorkspaceManager:
         script = self._item.to_string()
         script = textwrap.dedent(script[script.find(u'\t'):])
         script = f'''# Important instructions: You are now editing the script of an OpenSesame item called {self._item.name} of type {self._item.item_type}. The scripting language is OpenSesame script (and not Python or JavaScript), a domain-specific language. You can use f-string syntax to include variables and Python expressions, like this: some_keyword="Some value with a {{variable_or_expression}}". Only update the workspace with modifications of this script. Do not put any other content into the workspace. Do not include this instruction comment in your reply.
+
 {script}
 '''
         return script, 'opensesame'
