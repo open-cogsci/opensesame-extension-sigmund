@@ -176,7 +176,7 @@ class ChatWidget(QWidget):
 
     def clear_messages(self):
         self._chat_browser.clear_messages()
-    
+
 
     def setEnabled(self, enabled=True):
         self._chat_input.setPlaceholderText(PLACEHOLDER_TEXT if enabled

@@ -32,6 +32,7 @@ class SigmundWidget(QWidget):
 
     server_state_changed = Signal(str)  # Emitted when server state changes
     token_received = Signal(str)
+    chat_widget_cls = chat_widget.ChatWidget
 
     def __init__(self, parent=None, application='Unknown'):
         super().__init__(parent)
@@ -159,7 +160,7 @@ class SigmundWidget(QWidget):
             layout.setSpacing(10)
     
         if self._state == 'connected':
-            self.chat_widget = chat_widget.ChatWidget(self)
+            self.chat_widget = self.chat_widget_cls(self)
             self.chat_widget.user_message_sent.connect(self.send_user_message)
             layout.addWidget(self.chat_widget)
         else:
@@ -277,15 +278,8 @@ class SigmundWidget(QWidget):
                 # If the workspace content is a run command, we don't process it
                 # further.
                 if self.run_command(workspace_content):
-                    return
-                # Show diff, and if accepted, update
-                result = DiffDialog(
-                    self,
-                    message_text,
-                    self._workspace_manager.strip_content(self._workspace_manager.content),
-                    self._workspace_manager.strip_content(workspace_content)
-                ).exec()
-                if result == DiffDialog.Accepted:
+                    return                
+                if self.confirm_change(message_text, workspace_content):
                     try:
                         self._workspace_manager.set(workspace_content, workspace_language)
                     except Exception:
@@ -306,6 +300,16 @@ class SigmundWidget(QWidget):
     
         else:
             logger.error(f'invalid or unhandled incoming message: {data}')
+            
+    def confirm_change(self, message_text, workspace_content):
+        # Show diff, and if accepted, update
+        result = DiffDialog(
+            self,
+            message_text,
+            self._workspace_manager.strip_content(self._workspace_manager.content),
+            self._workspace_manager.strip_content(workspace_content)
+        ).exec()     
+        return result == DiffDialog.Accepted   
             
     def run_command(self, content):
         """Special commands can be received as JSON objects in the workspace.
