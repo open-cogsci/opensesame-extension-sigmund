@@ -24,7 +24,10 @@ class OpenSesameSigmundWidget(SigmundWidget):
         super().__init__(*args, **kwargs)
         self._transient_settings = {
             # 'collection_opensesame': 'true',
-            'tool_opensesame_select_item': 'true'
+            'tool_opensesame_select_item': 'true',
+            'tool_opensesame_new_item': 'true',
+            'tool_remove_item_from_parent': 'true',
+            'tool_rename_item': 'true'
         }
         
     def _confirm_action(self, msg):
@@ -35,14 +38,48 @@ class OpenSesameSigmundWidget(SigmundWidget):
                                      QMessageBox.Yes)        
         return reply == QMessageBox.Yes
 
-    def run_command_select_item(self, item_name=None):
-        if not item_name or item_name not in self.sigmund_extension.item_store:
+    def run_command_select_item(self, item_name):
+        if item_name not in self.sigmund_extension.item_store:
             return f'Item {item_name} does not exist.'        
         
-        if self._confirm_action(_('Select item {}').format(item_name)):
-            self.sigmund_extension.item_store[item_name].open_tab()
-            return f'Item {item_name} is now selected.'
-        return ACTION_CANCELLED
+        if not self._confirm_action(_('Select item {}').format(item_name)):
+            return ACTION_CANCELLED
+        self.sigmund_extension.item_store[item_name].open_tab()
+        return f'Item {item_name} is now selected.'
+        
+    def run_command_new_item(self, item_name, item_type, parent_item_name,
+                             index=0):
+        if item_name in self.sigmund_extension.item_store:
+            return f'Item {item_name} already exists, please choose a different name.'
+        if parent_item_name not in self.sigmund_extension.item_store:
+            return f'Parent item {parent_item_name} does not exist.'
+        if not self._confirm_action(_('Create new item {}').format(item_name)):
+            return ACTION_CANCELLED
+        self.sigmund_extension.item_store.new(item_type, item_name)
+        self.sigmund_extension.item_store[parent_item_name].insert_child_item(
+            item_name, int(index))
+        self.sigmund_extension.item_store[item_name].open_tab()
+        return f'Item {item_name} has been created and is now selected.'
+        
+    def run_remove_item_from_parent(self, parent_item_name, index=0):
+        if parent_item_name not in self.sigmund_extension.item_store:
+            return f'Parent item {parent_item_name} does not exist.'
+        if not self._confirm_action(
+                _('Remove item from parent {}').format(parent_item_name)):
+            return ACTION_CANCELLED
+        # TODO
+        return f'Item has been removed from {parent_item_name}.'
+        
+    def run_rename_item(self, from_item_name, to_item_name):
+        if from_item_name not in self.sigmund_extension.item_store:
+            return f'Item {from_item_name} does not exist.'
+        if to_item_name in self.sigmund_extension.item_store:
+            return f'Item {to_item_name} already exists, please choose a different name.'
+        if not self._confirm_action(
+                _('Rename item {} to {}').format(from_item_name, to_item_name)):
+            return ACTION_CANCELLED
+        # TODO
+        return f'{from_item_name} has been renamed to {to_item_name}.'
 
     def _item_struct(self, item):
         d = {
