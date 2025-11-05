@@ -9,6 +9,7 @@ class WorkspaceManager:
         self.content = None
         self.language = None
         self.item_name = None
+        self._item = None
 
     def prepare(self, content):
         return content
@@ -16,7 +17,8 @@ class WorkspaceManager:
     def get(self):
         if self.item_name not in self._sigmund.item_store:
             self._item = None
-            self.content, self.language = self._prepare_general_script()
+            return '', 'markdown'
+            # self.content, self.language = self._prepare_general_script()
         else:
             self._item = self._sigmund.item_store[self.item_name]
             if self._item.item_type == 'inline_script':
@@ -30,7 +32,7 @@ class WorkspaceManager:
 
     def set(self, content, language):
         if self._item is None:
-            self._parse_general_script(content)
+            # self._parse_general_script(content)
             return
         if self._item.item_type == 'inline_script':
             self._parse_inline_script(content)

@@ -44,6 +44,7 @@ class SigmundWidget(QWidget):
         self._to_main_queue = None
         self._to_server_queue = None
         self._transient_settings = None
+        self._transient_system_prompt = None
         self._retry = 1
 
         # References to OS-specific things (injected/set by extension)
@@ -141,9 +142,18 @@ class SigmundWidget(QWidget):
             "message": text,
             "workspace_content": workspace_content,
             "workspace_language": workspace_language,
-            "transient_settings": json.dumps(self._transient_settings) if self._transient_settings else None
+            "transient_settings": (json.dumps(self._transient_settings)
+                                   if self._transient_settings else None),
+            "transient_system_prompt": self._transient_system_prompt
         }
         self._to_server_queue.put(json.dumps(user_json))
+        
+    def send_user_triggered_message(self, *args, **kwargs):
+        """Can be reimplemented to handle certain logic that only applies to
+        user-triggered messages, as opposed to user messages that are 
+        automatically sent, such as tool results.
+        """
+        self.send_user_message(*args, **kwargs)
 
     def refresh_ui(self):
         layout = self.layout()
@@ -161,7 +171,8 @@ class SigmundWidget(QWidget):
     
         if self._state == 'connected':
             self.chat_widget = self.chat_widget_cls(self)
-            self.chat_widget.user_message_sent.connect(self.send_user_message)
+            self.chat_widget.user_message_sent.connect(
+                self.send_user_triggered_message)
             layout.addWidget(self.chat_widget)
         else:
             pix_label = QLabel()
@@ -235,15 +246,15 @@ class SigmundWidget(QWidget):
             # Directly handle messages here
             self._on_message_received(data)
 
-    def _on_message_received(self, data):
-        """
-        Handle parsed messages from the server. We do OS-specific actions here—
-        for example, we store tokens, manage workspace content, etc.
+    def _on_message_received(self, data) -> bool:
+        """Handle parsed messages from the server. The return value indicates
+        whether or not an automatic reply was sent, for example a continue 
+        message or tool results.
         """
         action = data.get("action", None)
 
         if not self.chat_widget:
-            return
+            return False
 
         if action == 'token':
             token = data.get('message', '')
@@ -278,7 +289,7 @@ class SigmundWidget(QWidget):
                 # If the workspace content is a run command, we don't process it
                 # further.
                 if self.run_command(message_text, workspace_content):
-                    return
+                    return True
                 if self.confirm_change(message_text, workspace_content):
                     try:
                         self._workspace_manager.set(workspace_content, workspace_language)
@@ -297,9 +308,10 @@ class SigmundWidget(QWidget):
                             self.send_user_message(err_msg, workspace_content,
                                                    workspace_language,
                                                    retry=self._retry - 1)
-    
+                            return True
         else:
             logger.error(f'invalid or unhandled incoming message: {data}')
+        return False
             
     def confirm_change(self, message_text, workspace_content):
         # Show diff, and if accepted, update

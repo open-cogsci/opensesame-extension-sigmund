@@ -16,7 +16,8 @@ menu = {
 settings = {
     "sigmund_token": "",
     "sigmund_visible": True,
-    "sigmund_review_actions": True
+    "sigmund_review_actions": True,
+    "sigmund_search_docs": False
 }
 modes = ["default", "ide"]
 priority = 1000

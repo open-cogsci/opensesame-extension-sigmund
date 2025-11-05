@@ -23,6 +23,11 @@ class OpenSesameChatWidget(ChatWidget):
         self._review_actions_checkbox.setChecked(cfg.sigmund_review_actions)
         self._review_actions_checkbox.stateChanged.connect(self._on_review_actions_changed)
         options_layout.addWidget(self._review_actions_checkbox)
+        # "Review proposed changes" checkbox
+        self._search_docs_checkbox = QCheckBox(_("Use expert knowledge (slow, often not necessary)"))
+        self._search_docs_checkbox.setChecked(cfg.sigmund_search_docs)
+        self._search_docs_checkbox.stateChanged.connect(self._on_search_docs_changed)
+        options_layout.addWidget(self._search_docs_checkbox)
         # Insert the options container before the input container
         main_layout = self.layout()
         main_layout.insertWidget(main_layout.count(), options_container)
@@ -30,3 +35,7 @@ class OpenSesameChatWidget(ChatWidget):
     def _on_review_actions_changed(self, state):
         """Store the review changes setting."""
         cfg.sigmund_review_actions = bool(state)
+        
+    def _on_search_docs_changed(self, state):
+        """Store the search docs setting."""
+        cfg.sigmund_search_docs = bool(state)
