@@ -277,8 +277,8 @@ class SigmundWidget(QWidget):
             ):
                 # If the workspace content is a run command, we don't process it
                 # further.
-                if self.run_command(workspace_content):
-                    return                
+                if self.run_command(message_text, workspace_content):
+                    return
                 if self.confirm_change(message_text, workspace_content):
                     try:
                         self._workspace_manager.set(workspace_content, workspace_language)
@@ -311,7 +311,7 @@ class SigmundWidget(QWidget):
         ).exec()     
         return result == DiffDialog.Accepted   
             
-    def run_command(self, content):
+    def run_command(self, message_text, workspace_content):
         """Special commands can be received as JSON objects in the workspace.
         
         Example:
@@ -327,24 +327,27 @@ class SigmundWidget(QWidget):
         function. The return value of the function is passed back as a
         user message to Sigmund.
         """
-        if not isinstance(content, str):
+        if not isinstance(workspace_content, str):
             return False
         try:
-            data = json.loads(content)
+            data = json.loads(workspace_content)
         except json.JSONDecodeError:
             return False
         command = data.pop('command', None)
         if command is None:
-            logger.warning(f'no command in JSON data: {content}')
+            logger.warning(f'no command in JSON data: {workspace_content}')
             return False
         fnc_name = f'run_command_{command}'
         if hasattr(self, fnc_name):
-            logger.info(f'executing command from JSON data: {content}')
-            result = getattr(self, fnc_name)(**data)
+            logger.info(f'executing command from JSON data: {workspace_content}')
+            try:
+                result = getattr(self, fnc_name)(**data)
+            except Exception as e:
+                result = f'An error occurred while executing command: {e}'
             if result:
                 self.send_user_message(result)
             return True
-        logger.warning(f'no function for command from JSON data: {content}')
+        logger.warning(f'no function for command from JSON data: {workspace_content}')
         return False
         
     def _request_token(self):
