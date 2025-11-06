@@ -29,7 +29,7 @@ class OpenSesameSigmundWidget(SigmundWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._n_resumes_left = 0
-        self._transient_settings = {            
+        self._transient_settings = {  
             'tool_opensesame_select_item': 'true',
             'tool_opensesame_new_item': 'true',
             'tool_opensesame_remove_item_from_parent': 'true',
@@ -176,34 +176,10 @@ You're working on an OpenSesame experiment with the following structure:
 </experiment_structure>
 
 '''
-        if self.current_item_name is not None:
-            example_script = getattr(example_item_scripts,
-                                     self.current_item_type,
-                                     None)
-            if example_script is None:
-                oslogger.warning(f'no example script for {self.current_item_type}')
-            else:                
-                system_prompt += f'''You are currently editing the script of an item called {self.current_item_name} of type {self.current_item_type}. The scripting language is OpenSesame script (and not Python or JavaScript), a domain-specific language. You can use f-string syntax to include variables and Python expressions, like this: some_keyword="Some value with a {{variable_or_expression}}". Below is a generic example to illustrate the scripting language. The actual script of {self.current_item_name} is available in the workspace.
-    
-<example_script>
-{example_script.strip()}
-</example_script>
-
-'''
-        system_prompt += '''## Maintaining a todo list
-        
-If your current task consists of multiple steps, please mantain a todo list with the format shown below. While you are working on the task, include this todo list with each response. When you are done, or if you want to finish or abandon the task, omit the todo list from your answer.
-
-<example_todo_list>
-Todo:
-
-- [x] Step 1
-- [ ] Step 2
-</example_todo_list>
-
-'''
         self._transient_system_prompt = system_prompt
-        print(system_prompt)
+        self._foundation_document_topics = ['opensesame']
+        if self.current_item_type is not None:
+            self._foundation_document_topics += [self.current_item_type]
         self._transient_settings['collection_opensesame'] = \
             'true' if cfg.sigmund_search_docs else 'false'
         super().send_user_message(text, *args, **kwargs)
@@ -211,22 +187,6 @@ Todo:
     def send_user_triggered_message(self, *args, **kwargs):
         self._n_resumes_left = N_MAX_RESUMES
         super().send_user_triggered_message(*args, **kwargs)
-
-    def _on_message_received(self, data):
-        action = data.get("action", None)
-        reply_sent = super()._on_message_received(data)
-        if action == "ai_message":
-            # Show the AI message
-            message_text = data.get("message", "")
-            # If we have not already sent a reply to the message, and if the message
-            # contains a todo list with unfinished elements, we ask Sigmund to 
-            # continue.
-            if self._n_resumes_left and not reply_sent \
-                    and re.search(r'[-*+•–♦○└─]\s*\[\s*\]', message_text):
-                self._n_resumes_left -= 1
-                self.send_user_message('You appear to be in the middle of a task. Please continue or finish the task.')
-                return True
-        return reply_sent
         
     def confirm_change(self, message_text, workspace_content):
         if not cfg.sigmund_review_actions:

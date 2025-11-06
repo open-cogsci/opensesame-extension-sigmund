@@ -54,6 +54,7 @@ class ChatWidget(QWidget):
     """
 
     user_message_sent = Signal(str)
+    clear_conversation_requested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -104,6 +105,17 @@ class ChatWidget(QWidget):
         self._maximize_button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self._maximize_button.clicked.connect(self._toggle_maximize)
         button_layout.addWidget(self._maximize_button)
+        
+        # Clear conversation button
+        self._clear_button = QPushButton()
+        try:
+            self._clear_button.setIcon(qta.icon('mdi6.restart'))
+        except Exception:
+            self._clear_button.setText('🗑️')
+        self._clear_button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self._clear_button.clicked.connect(self.clear_conversation_requested.emit)
+        button_layout.addWidget(self._clear_button)
+        
         button_layout.addStretch()
 
         input_layout.addWidget(button_container)
@@ -177,8 +189,8 @@ class ChatWidget(QWidget):
     def clear_messages(self):
         self._chat_browser.clear_messages()
 
-
     def setEnabled(self, enabled=True):
         self._chat_input.setPlaceholderText(PLACEHOLDER_TEXT if enabled
                                             else PLACEHOLDER_BUSY_TEXT)
         super().setEnabled(enabled)
+    

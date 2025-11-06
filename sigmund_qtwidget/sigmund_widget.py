@@ -45,6 +45,7 @@ class SigmundWidget(QWidget):
         self._to_server_queue = None
         self._transient_settings = None
         self._transient_system_prompt = None
+        self._foundation_document_topics = None
         self._retry = 1
 
         # References to OS-specific things (injected/set by extension)
@@ -144,7 +145,11 @@ class SigmundWidget(QWidget):
             "workspace_language": workspace_language,
             "transient_settings": (json.dumps(self._transient_settings)
                                    if self._transient_settings else None),
-            "transient_system_prompt": self._transient_system_prompt
+            "transient_system_prompt": self._transient_system_prompt,
+            "foundation_document_topics": (
+                json.dumps(self._foundation_document_topics)
+                if self._foundation_document_topics else None
+            )
         }
         self._to_server_queue.put(json.dumps(user_json))
         
@@ -154,6 +159,11 @@ class SigmundWidget(QWidget):
         automatically sent, such as tool results.
         """
         self.send_user_message(*args, **kwargs)
+        
+    def clear_conversation(self):
+        self._to_server_queue.put(json.dumps({
+            "action": "clear_conversation"
+        }))
 
     def refresh_ui(self):
         layout = self.layout()
@@ -173,6 +183,8 @@ class SigmundWidget(QWidget):
             self.chat_widget = self.chat_widget_cls(self)
             self.chat_widget.user_message_sent.connect(
                 self.send_user_triggered_message)
+            self.chat_widget.clear_conversation_requested.connect(
+                self.clear_conversation)
             layout.addWidget(self.chat_widget)
         else:
             pix_label = QLabel()
