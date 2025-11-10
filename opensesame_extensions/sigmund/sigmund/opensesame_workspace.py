@@ -77,7 +77,9 @@ class WorkspaceManager:
         # a tab. We want to undo this, and present only unindented content.
         script = self._item.to_string()
         script = textwrap.dedent(script[script.find(u'\t'):])
-        script = f'''# Important instructions: You are now editing the script of an OpenSesame item called {self._item.name} of type {self._item.item_type}. The scripting language is OpenSesame script (and not Python or JavaScript), a domain-specific language. You can use f-string syntax to include variables and Python expressions, like this: some_keyword="Some value with a {{variable_or_expression}}". Only update the workspace with modifications of this script. Do not put any other content into the workspace. Do not include this instruction comment in your reply.
+        script = f'''# You are now viewing the script of an OpenSesame item called {self._item.name} of type {self._item.item_type}. The scripting language is OpenSesame script (and not Python or JavaScript), a domain-specific language. You can use f-string syntax to include variables and Python expressions, like this: some_keyword="Some value with a {{variable_or_expression}}".
+#
+# IMPORTANT: To modify the item script, use the opensesame_update_item_script tool.
 
 {script}
 '''
@@ -96,7 +98,11 @@ class WorkspaceManager:
         self._item.open_tab()
 
     def _prepare_inline_script(self):
-        return f'''# Important instructions: You are now editing a Python inline_script item called {self._item.name}. Only update the workspace with modifications of this script. Do not put any other content into the workspace. Do not include this instruction comment in your reply. Do include the START_PREPARE_PHASE and START_RUN_PHASE markers in your reply.
+        return f'''# You are now editing a Python inline_script item called {self._item.name}.
+#
+# IMPORTANT: To modify the Python inline_script, use the opensesame_update_item_script tool.
+# # IMPORTANT: Include START_PREPARE_PHASE and START_RUN_PHASE markers in your script.
+
 # START_PREPARE_PHASE
 {self._item.var._prepare}
 # START_RUN_PHASE
@@ -116,7 +122,11 @@ class WorkspaceManager:
         self._item.open_tab()
 
     def _prepare_inline_javascript(self):
-        return f'''// Important instructions: You are now editing a JavaScript inline_javascript item called {self._item.name}. Only update the workspace with modifications of this script. Do not put any other content into the workspace. Do not include this instruction comment in your reply. Do include the START_PREPARE_PHASE and START_RUN_PHASE markers in your reply.
+        return f'''// You are now editing a JavaScript inline_javascript item called {self._item.name}. 
+//
+// IMPORTANT: To modify the JavaScript inline_javascript, use the opensesame_update_item_script tool.
+// IMPORTANT: Include START_PREPARE_PHASE and START_RUN_PHASE markers in your script.        
+
 // START_PREPARE_PHASE
 {self._item.var._prepare}
 // START_RUN_PHASE

@@ -304,7 +304,8 @@ class SigmundWidget(QWidget):
                     return True
                 if self.confirm_change(message_text, workspace_content):
                     try:
-                        self._workspace_manager.set(workspace_content, workspace_language)
+                        self._workspace_manager.set(workspace_content,
+                                                    workspace_language)
                     except Exception:
                         err_msg = f'''The following error occurred when I tried to use the workspace content:
                         
@@ -323,7 +324,7 @@ class SigmundWidget(QWidget):
                             return True
         else:
             logger.error(f'invalid or unhandled incoming message: {data}')
-        return False
+        return False    
             
     def confirm_change(self, message_text, workspace_content):
         # Show diff, and if accepted, update

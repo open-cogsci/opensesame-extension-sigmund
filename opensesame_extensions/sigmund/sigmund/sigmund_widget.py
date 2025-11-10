@@ -1,4 +1,5 @@
 import json
+import traceback
 from qtpy.QtWidgets import QMessageBox
 from .chat_widget import OpenSesameChatWidget
 from sigmund_qtwidget.sigmund_widget import SigmundWidget
@@ -31,7 +32,8 @@ class OpenSesameSigmundWidget(SigmundWidget):
             'tool_opensesame_new_item': 'true',
             'tool_opensesame_remove_item_from_parent': 'true',
             'tool_opensesame_rename_item': 'true',
-            'tool_opensesame_add_existing_item_to_parent': 'true'
+            'tool_opensesame_add_existing_item_to_parent': 'true',
+            'tool_opensesame_update_item_script': 'true'
         }
         
     @property
@@ -65,8 +67,10 @@ class OpenSesameSigmundWidget(SigmundWidget):
         # Sigmund sometimes forgets to call the tool function, and instead 
         # requests the tool use in the reply based on previous messages. If this
         # happens, send a kind reminder.
-        if not is_command and 'using tool:' in message_text.lower():
+        if not is_command and \
+                '(suggesting opensesame action)' in message_text.lower():
             self.send_user_message(MISSING_TOOL_CALL)
+            return True  # To avoid the message from being processed further
         return is_command
             
     def run_command_select_item(self, item_name):
@@ -125,6 +129,30 @@ class OpenSesameSigmundWidget(SigmundWidget):
         self.items.rename(from_item_name, to_item_name)
         self.items[to_item_name].open_tab()
         return f'{from_item_name} has been renamed to {to_item_name}.'
+        
+    def run_command_update_item_script(self, item_name, script):
+        if item_name not in self.items:
+            return f'Item {item_name} does not exist.'
+        self.items[item_name].open_tab()
+        item_type = self.current_item_type
+        if item_type == 'inline_script':
+            workspace_language = 'python'
+        elif item_type == 'inline_javascript':
+            workspace_language = 'javascript'
+        else:
+            workspace_language = 'opensesame'
+        if not self.confirm_change('Sigmund wants to change the item.', script):
+            return ACTION_CANCELLED
+        try:
+            self._workspace_manager.set(script, workspace_language)
+        except Exception:
+            return f'''The following error occurred when parsing the updated script:
+            
+```
+{traceback.format_exc()}
+```
+'''
+        return f'{item_name} has been updated.'
 
     def _item_struct(self, item):
         d = {'item_name': item.name, 'item_type': item.item_type}
@@ -175,6 +203,18 @@ You're working on an OpenSesame experiment with the following structure:
 <experiment_structure>
 {json.dumps(self._experiment_struct(), indent=2)}
 </experiment_structure>
+
+## Modifying and creating items
+
+To create a new item:
+        
+1. Call `tool_opensesame_new_item` to create a new item and insert it into a parent item
+2. Call `tool_opensesame_update_item_script` to define script of the newly created item
+
+To modify an existing item:
+        
+1. Call `tool_opensesame_select_item` to select an existing item
+2. Call `tool_opensesame_update_item_script` to update the script of the selected item
 '''
         self._transient_system_prompt = system_prompt
         self._foundation_document_topics = ['opensesame']
