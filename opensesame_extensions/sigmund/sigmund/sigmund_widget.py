@@ -1,10 +1,7 @@
-import re
 import json
 from qtpy.QtWidgets import QMessageBox
 from .chat_widget import OpenSesameChatWidget
-from . import example_item_scripts
 from sigmund_qtwidget.sigmund_widget import SigmundWidget
-from libopensesame.oslogging import oslogger
 from libqtopensesame.misc.config import cfg
 from libqtopensesame.misc.translate import translation_context
 try:
@@ -164,6 +161,10 @@ class OpenSesameSigmundWidget(SigmundWidget):
             pool_files = pool_files[:MAX_POOL_FILES] + \
                 [_('(… {} more files not shown)').format(n_hidden)]
         exp_struct['file_pool'] = pool_files
+        exp_struct['global_vars'] = {
+            key: val for key, val in
+            self.sigmund_extension.experiment.var.items()
+        }
         return exp_struct
 
     def send_user_message(self, text, *args, **kwargs):        
@@ -174,7 +175,6 @@ You're working on an OpenSesame experiment with the following structure:
 <experiment_structure>
 {json.dumps(self._experiment_struct(), indent=2)}
 </experiment_structure>
-
 '''
         self._transient_system_prompt = system_prompt
         self._foundation_document_topics = ['opensesame']
