@@ -156,7 +156,11 @@ class OpenSesameSigmundWidget(SigmundWidget):
         return f'{item_name} has been updated.'
         
     def run_command_set_global_var(self, var_name, value):
+        # To make sure that the UI reflects the global variable update, we
+        # rebuld the overview area, and make sure that the general properties
+        # are shown and refreshed.
         self.sigmund_extension.experiment.var.set(var_name, value)
+        self.sigmund_extension.experiment.build_item_tree()
         self.sigmund_extension.tabwidget.open_general()
         self.sigmund_extension.tabwidget.currentWidget().refresh()
         return f'Global experiment variable {var_name} has been set to {value}.'
