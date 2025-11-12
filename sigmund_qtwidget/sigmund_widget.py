@@ -136,7 +136,7 @@ class SigmundWidget(QWidget):
 
         self._retry = retry
         if self.chat_widget:
-            self.chat_widget.setEnabled(False)
+            self.chat_widget.setState('waiting')
 
         user_json = {
             "action": "user_message",
@@ -164,6 +164,11 @@ class SigmundWidget(QWidget):
         self._to_server_queue.put(json.dumps({
             "action": "clear_conversation"
         }))
+        
+    def cancel_streaming(self):
+        self._to_server_queue.put(json.dumps({
+            "action": "cancel_streaming"
+        }))
 
     def refresh_ui(self):
         layout = self.layout()
@@ -185,6 +190,7 @@ class SigmundWidget(QWidget):
                 self.send_user_triggered_message)
             self.chat_widget.clear_conversation_requested.connect(
                 self.clear_conversation)
+            self.chat_widget.cancel_requested.connect(self.cancel_streaming)
             layout.addWidget(self.chat_widget)
         else:
             pix_label = QLabel()

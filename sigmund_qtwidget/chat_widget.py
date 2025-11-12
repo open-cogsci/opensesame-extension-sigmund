@@ -48,6 +48,7 @@ class ChatWidget(QWidget):
       - A ChatBrowser for messages (with HTML/CSS styling).
       - A multiline input (MultiLineInput).
       - A "Send" button.
+      - A "Cancel" button (shown when waiting).
       - A "Maximize/Minimize" button.
 
     The Sigmund extension connects to user_message_sent to handle server logic.
@@ -55,6 +56,7 @@ class ChatWidget(QWidget):
 
     user_message_sent = Signal(str)
     clear_conversation_requested = Signal()
+    cancel_requested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -81,23 +83,34 @@ class ChatWidget(QWidget):
         self._chat_input.enterPressed.connect(self._on_send)
         input_layout.addWidget(self._chat_input)
 
-        # Button container for send and maximize buttons
+        # Button container for send/cancel and maximize buttons
         button_container = QWidget()
         button_layout = QVBoxLayout(button_container)
         button_layout.setContentsMargins(0, 0, 0, 0)
         button_layout.setSpacing(2)
 
+        # Send button
         self._send_button = QPushButton()
         try:
             self._send_button.setIcon(qta.icon('mdi6.send'))
         except Exception:
             self._send_button.setText('➤')
-        # Make the button as tall as possible
         self._send_button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self._send_button.clicked.connect(self._on_send)
         # Initially disabled until input >= 3 chars
         self._send_button.setEnabled(False)
         button_layout.addWidget(self._send_button)
+
+        # Cancel button (initially hidden)
+        self._cancel_button = QPushButton()
+        try:
+            self._cancel_button.setIcon(qta.icon('mdi6.stop'))
+        except Exception:
+            self._cancel_button.setText('⏹')
+        self._cancel_button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self._cancel_button.clicked.connect(self.cancel_requested.emit)
+        self._cancel_button.setVisible(False)
+        button_layout.addWidget(self._cancel_button)
 
         # Maximize/Minimize button
         self._maximize_button = QPushButton()
@@ -105,7 +118,7 @@ class ChatWidget(QWidget):
         self._maximize_button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self._maximize_button.clicked.connect(self._toggle_maximize)
         button_layout.addWidget(self._maximize_button)
-        
+
         # Clear conversation button
         self._clear_button = QPushButton()
         try:
@@ -115,13 +128,43 @@ class ChatWidget(QWidget):
         self._clear_button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self._clear_button.clicked.connect(self.clear_conversation_requested.emit)
         button_layout.addWidget(self._clear_button)
-        
+
         button_layout.addStretch()
 
         input_layout.addWidget(button_container)
 
         main_layout.addWidget(self._input_container)
         self.setLayout(main_layout)
+
+    def setState(self, state):
+        """
+        Set the widget state. Valid states:
+        - 'disabled': send button visible but disabled, input disabled, cancel hidden
+        - 'enabled': send button visible and enabled, input enabled, cancel hidden
+        - 'waiting': cancel button visible, input disabled, send hidden
+        """
+        if state == 'disabled':
+            self._chat_input.setEnabled(False)
+            self._chat_input.setPlaceholderText(PLACEHOLDER_TEXT)
+            self._send_button.setVisible(True)
+            self._send_button.setEnabled(False)
+            self._cancel_button.setVisible(False)
+        elif state == 'enabled':
+            self._chat_input.setEnabled(True)
+            self._chat_input.setPlaceholderText(PLACEHOLDER_TEXT)
+            self._send_button.setVisible(True)
+            # Enable send button only if there's enough text
+            text = self._chat_input.toPlainText().strip()
+            self._send_button.setEnabled(len(text) >= 3)
+            self._cancel_button.setVisible(False)
+        elif state == 'waiting':
+            self._chat_input.setEnabled(False)
+            self._chat_input.setPlaceholderText(PLACEHOLDER_BUSY_TEXT)
+            self._send_button.setVisible(False)
+            self._cancel_button.setVisible(True)
+            self._cancel_button.setEnabled(True)
+        else:
+            raise ValueError(f"Invalid state: {state}. Must be 'disabled', 'enabled', or 'waiting'")
 
     def _update_maximize_button_icon(self):
         """Update the maximize button icon based on current state."""
@@ -166,7 +209,9 @@ class ChatWidget(QWidget):
     def _on_text_changed(self):
         """Enable the send button when >= 3 chars in the input."""
         text = self._chat_input.toPlainText().strip()
-        self._send_button.setEnabled(len(text) >= 3)
+        # Only update if send button is visible (not in waiting state)
+        if self._send_button.isVisible():
+            self._send_button.setEnabled(len(text) >= 3)
 
     def _on_send(self):
         text = self._chat_input.toPlainText().strip()
@@ -190,7 +235,8 @@ class ChatWidget(QWidget):
         self._chat_browser.clear_messages()
 
     def setEnabled(self, enabled=True):
-        self._chat_input.setPlaceholderText(PLACEHOLDER_TEXT if enabled
-                                            else PLACEHOLDER_BUSY_TEXT)
-        super().setEnabled(enabled)
-    
+        """Override setEnabled to use setState."""
+        if enabled:
+            self.setState('enabled')
+        else:
+            self.setState('disabled')
