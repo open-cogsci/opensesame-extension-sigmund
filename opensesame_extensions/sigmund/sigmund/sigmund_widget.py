@@ -33,7 +33,8 @@ class OpenSesameSigmundWidget(SigmundWidget):
             'tool_opensesame_remove_item_from_parent': 'true',
             'tool_opensesame_rename_item': 'true',
             'tool_opensesame_add_existing_item_to_parent': 'true',
-            'tool_opensesame_update_item_script': 'true'
+            'tool_opensesame_update_item_script': 'true',
+            'tool_opensesame_set_global_var': 'true'
         }
         
     @property
@@ -153,6 +154,12 @@ class OpenSesameSigmundWidget(SigmundWidget):
 ```
 '''
         return f'{item_name} has been updated.'
+        
+    def run_command_set_global_var(self, var_name, value):
+        self.sigmund_extension.experiment.var.set(var_name, value)
+        self.sigmund_extension.tabwidget.open_general()
+        self.sigmund_extension.tabwidget.currentWidget().refresh()
+        return f'Global experiment variable {var_name} has been set to {value}.'
 
     def _item_struct(self, item):
         d = {'item_name': item.name, 'item_type': item.item_type}
