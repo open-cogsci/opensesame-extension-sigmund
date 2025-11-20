@@ -70,6 +70,7 @@ Ask Sigmund to fix this
         self.event_open_item(None)
 
     def event_open_general_script(self):
+        oslogger.info('Sigmund: opening general script')
         self.event_open_item(None)
 
     def event_rename_item(self, from_name, to_name):

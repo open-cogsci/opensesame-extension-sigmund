@@ -26,7 +26,6 @@ class OpenSesameSigmundWidget(SigmundWidget):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._n_resumes_left = 0
         self._transient_settings = {  
             'tool_opensesame_select_item': 'true',
             'tool_opensesame_new_item': 'true',
@@ -234,10 +233,6 @@ To modify an existing item:
         self._transient_settings['collection_opensesame'] = \
             'true' if cfg.sigmund_search_docs else 'false'
         super().send_user_message(text, *args, **kwargs)
-        
-    def send_user_triggered_message(self, *args, **kwargs):
-        self._n_resumes_left = N_MAX_RESUMES
-        super().send_user_triggered_message(*args, **kwargs)
         
     def confirm_change(self, message_text, workspace_content):
         if not cfg.sigmund_review_actions:

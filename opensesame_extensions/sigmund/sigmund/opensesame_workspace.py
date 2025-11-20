@@ -17,22 +17,16 @@ class WorkspaceManager:
     def get(self):
         if self.item_name not in self._sigmund.item_store:
             self._item = None
-            return '', 'markdown'
-            # self.content, self.language = self._prepare_general_script()
-        else:
-            self._item = self._sigmund.item_store[self.item_name]
-            if self._item.item_type == 'inline_script':
-                self.content, self.language = self._prepare_inline_script()
-            elif self._item.item_type == 'inline_javascript':
-                self.content, self.language = \
-                    self._prepare_inline_javascript()
-            else:
-                self.content, self.language = self._prepare_item_script()
-        return self.content, self.language
+            return 'No item is currently selected.', 'markdown'
+        self._item = self._sigmund.item_store[self.item_name]
+        if self._item.item_type == 'inline_script':
+            return self._prepare_inline_script()
+        if self._item.item_type == 'inline_javascript':
+            return self._prepare_inline_javascript()
+        return self._prepare_item_script()
 
     def set(self, content, language):
         if self._item is None:
-            # self._parse_general_script(content)
             return
         if self._item.item_type == 'inline_script':
             self._parse_inline_script(content)
@@ -57,16 +51,6 @@ class WorkspaceManager:
             line for line in content.splitlines()
             if not line.startswith('# Important instructions:'))
         
-    def _parse_general_script(self, content):
-        self._sigmund.main_window.regenerate(content)
-            
-    def _prepare_general_script(self):
-        script = f'''# Important instructions: You are now viewing the script of an OpenSesame experiment. The scripting language is OpenSesame script, a domain-specific language, and not Python or JavaScript (although Python and JavaScript may be embedded). You can use f-string syntax to include variables and Python expressions, like this: some_keyword="Some value with a {{variable_or_expression}}". Only update the workspace with modifications of this script. Do not put any other content into the workspace. Do not include this instruction comment in your reply. IMPORTANT: To edit, create, rename, or delete items, use the corresponding function tools. Only edit this script if there is no other way to make the necessary changes.
-
-{self._sigmund.experiment.to_string()}
-'''
-        return script, 'opensesame'
-        
     def _parse_item_script(self, content):
         self._item.from_string(content)
         self._item.update()
@@ -79,7 +63,7 @@ class WorkspaceManager:
         script = textwrap.dedent(script[script.find(u'\t'):])
         script = f'''# You are now viewing the script of an OpenSesame item called {self._item.name} of type {self._item.item_type}. The scripting language is OpenSesame script (and not Python or JavaScript), a domain-specific language. You can use f-string syntax to include variables and Python expressions, like this: some_keyword="Some value with a {{variable_or_expression}}".
 #
-# IMPORTANT: To modify the item script, use the opensesame_update_item_script tool.
+# IMPORTANT: To modify this item script, use the opensesame_update_item_script tool.
 
 {script}
 '''
@@ -100,8 +84,8 @@ class WorkspaceManager:
     def _prepare_inline_script(self):
         return f'''# You are now editing a Python inline_script item called {self._item.name}.
 #
-# IMPORTANT: To modify the Python inline_script, use the opensesame_update_item_script tool.
-# # IMPORTANT: Include START_PREPARE_PHASE and START_RUN_PHASE markers in your script.
+# IMPORTANT: To modify this Python inline_script, use the opensesame_update_item_script tool. (The item is already selected, so you do not need to run the opensesame_select_item tool first.)
+# IMPORTANT: Include START_PREPARE_PHASE and START_RUN_PHASE markers in your script.
 
 # START_PREPARE_PHASE
 {self._item.var._prepare}
@@ -124,7 +108,7 @@ class WorkspaceManager:
     def _prepare_inline_javascript(self):
         return f'''// You are now editing a JavaScript inline_javascript item called {self._item.name}. 
 //
-// IMPORTANT: To modify the JavaScript inline_javascript, use the opensesame_update_item_script tool.
+// IMPORTANT: To modify this JavaScript inline_javascript, use the opensesame_update_item_script tool. (The item is already selected, so you do not need to run the opensesame_select_item tool first.)
 // IMPORTANT: Include START_PREPARE_PHASE and START_RUN_PHASE markers in your script.        
 
 // START_PREPARE_PHASE
