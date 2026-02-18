@@ -43,6 +43,7 @@ class SigmundWidget(QWidget):
         self._application = application
         self._to_main_queue = None
         self._to_server_queue = None
+        self._attachments = None
         self._transient_settings = None
         self._transient_system_prompt = None
         self._foundation_document_topics = None
@@ -143,6 +144,7 @@ class SigmundWidget(QWidget):
             "message": text,
             "workspace_content": workspace_content,
             "workspace_language": workspace_language,
+            "attachments": self._attachments,
             "transient_settings": (json.dumps(self._transient_settings)
                                    if self._transient_settings else None),
             "transient_system_prompt": self._transient_system_prompt,
@@ -344,14 +346,14 @@ class SigmundWidget(QWidget):
             
     def run_command(self, message_text, workspace_content):
         """Special commands can be received as JSON objects in the workspace.
-        
+
         Example:
-        
+
         {
             "command": "select_item",
             "item_name": "some welcome"
         }
-        
+
         This will trigger a function call to `run_command_select_item()`,
         which should be implemented in a subclass. All other arguments, in 
         this case only `item_name`, are passed as keyword arguments to this
@@ -368,6 +370,17 @@ class SigmundWidget(QWidget):
         if command is None:
             logger.warning(f'no command in JSON data: {workspace_content}')
             return False
+        # If Sigmund wrapped the arguments inside a named sub-dict (e.g. "args",
+        # "parameters", …), flatten it into the top-level dict so the dispatcher
+        # can forward the kwargs correctly.
+        ARG_WRAPPER_KEYS = {
+            'args', 'arguments', 'kwargs', 'keyword_arguments',
+            'keywords', 'parameters', 'params', 'options'
+        }
+        for key in ARG_WRAPPER_KEYS:
+            if key in data and isinstance(data[key], dict):
+                data.update(data.pop(key))
+                break
         fnc_name = f'run_command_{command}'
         if hasattr(self, fnc_name):
             logger.info(f'executing command from JSON data: {workspace_content}')
