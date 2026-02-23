@@ -72,10 +72,12 @@ class WorkspaceManager:
     def _parse_inline_script(self, content):
         pattern = r"# START_PREPARE_PHASE\s*(.*?)\s*# START_RUN_PHASE\s*(.*)"
         match = re.search(pattern, content, re.DOTALL)
-        if not match:
-            return
-        prepare = match.group(1).strip()
-        run = match.group(2).strip()
+        if match:
+            prepare = match.group(1).strip()
+            run = match.group(2).strip()
+        else:
+            prepare = ''
+            run = content
         self._item.var._prepare = prepare
         self._item.var._run = run
         self._item.update()
@@ -96,10 +98,12 @@ class WorkspaceManager:
     def _parse_inline_javascript(self, content):
         pattern = r"// START_PREPARE_PHASE\s*(.*?)\s*// START_RUN_PHASE\s*(.*)"
         match = re.search(pattern, content, re.DOTALL)
-        if not match:
-            return
-        prepare = match.group(1).strip()
-        run = match.group(2).strip()
+        if match:
+            prepare = match.group(1).strip()
+            run = match.group(2).strip()
+        else:
+            prepare = ''
+            run = content
         self._item.var._prepare = prepare
         self._item.var._run = run
         self._item.update()
