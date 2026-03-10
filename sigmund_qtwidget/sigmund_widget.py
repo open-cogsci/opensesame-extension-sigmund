@@ -366,7 +366,10 @@ class SigmundWidget(QWidget):
             data = json.loads(workspace_content)
         except json.JSONDecodeError:
             return False
-        command = data.pop('command', None)
+        if isinstance(data, dict):
+            command = data.pop('command', None)
+        else:
+            command = None
         if command is None:
             logger.warning(f'no command in JSON data: {workspace_content}')
             return False
