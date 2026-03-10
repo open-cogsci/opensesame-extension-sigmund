@@ -1,6 +1,6 @@
 # SigmundAI copilot extension for OpenSesame and Sigmund Analyst
 
-Copyright 2025 Sebastiaan Mathôt (@smathot)
+Copyright 2025-2026 Sebastiaan Mathôt (@smathot)
 
 
 ## About
