@@ -231,7 +231,7 @@ To modify an existing item:
         if self.current_item_type is not None:
             self._foundation_document_topics += [self.current_item_type]
         self._transient_settings['collection_opensesame'] = \
-            'true' if cfg.sigmund_search_docs else 'false'
+            'true' if cfg.sigmund_search_docs else 'false'        
         super().send_user_message(text, *args, **kwargs)
         
     def confirm_change(self, message_text, workspace_content):

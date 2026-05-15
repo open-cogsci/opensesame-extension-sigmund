@@ -392,7 +392,10 @@ class SigmundWidget(QWidget):
             except Exception as e:
                 result = f'An error occurred while executing command: {e}'
             if result:
-                self.send_user_message(result)
+                # The tool result prefix indicates to Sigmund that this 
+                # result should not be interpreted as a user message, but
+                # instead merged into the previous tool message.
+                self.send_user_message(f'::tool_result::{result}')
             return True
         logger.warning(f'no function for command from JSON data: {workspace_content}')
         return False
