@@ -33,6 +33,7 @@ class OpenSesameSigmundWidget(SigmundWidget):
             'tool_opensesame_rename_item': 'true',
             'tool_opensesame_add_existing_item_to_parent': 'true',
             'tool_opensesame_update_item_script': 'true',
+            'tool_opensesame_update_loop_table': 'true',
             'tool_opensesame_set_global_var': 'true'
         }
         
@@ -153,12 +154,63 @@ class OpenSesameSigmundWidget(SigmundWidget):
 ```
 '''
         return f'{item_name} has been updated.'
-        
+
+    def run_command_update_loop_table(self, item_name, columns):
+        """Updates the loop table of a loop item based on a dictionary of
+        columns, similar to a DataFrame.
+        """
+        if item_name not in self.items:
+            return f'Item {item_name} does not exist.'
+        loop_item = self.items[item_name]
+        if loop_item.item_type != 'loop':
+            return f'Item {item_name} is not a loop item.'
+        # Validate that all columns have the same length
+        lengths = [len(values) for values in columns.values()]
+        if len(set(lengths)) > 1:
+            return f'All columns must have the same length, but got: {lengths}.'
+        # Validate that there is at least one column
+        if not columns:
+            return 'No columns were provided.'
+        from datamatrix import DataMatrix
+        # Build a new DataMatrix with the provided columns
+        dm = DataMatrix(length=lengths[0])
+        for col_name, values in columns.items():
+            dm[col_name] = values
+        # Convert to a readable representation for the confirmation dialog
+        if not self._confirm_action(
+                _('Update loop table of {}').format(item_name) +
+                f'\n\n{str(dm)}'):
+            return ACTION_CANCELLED
+        # Assign the new DataMatrix to the loop item and update the UI
+        loop_item.dm = dm
+        loop_item.update()
+        return f'Loop table of {item_name} has been updated with {lengths[0]} cycles and {len(columns)} columns.'
+
+    @staticmethod
+    def _format_table_preview(columns):
+        """Formats a dictionary of columns into a readable table preview."""
+        col_names = list(columns.keys())
+        n_rows = len(next(iter(columns.values()))) if columns else 0
+        lines = []
+        # Header
+        header = '| ' + ' | '.join(col_names) + ' |'
+        separator = '| ' + ' | '.join(['---'] * len(col_names)) + ' |'
+        lines.append(header)
+        lines.append(separator)
+        # Rows
+        for i in range(n_rows):
+            row = '| ' + ' | '.join(
+                str(columns[col][i]) for col in col_names
+            ) + ' |'
+            lines.append(row)
+        return '\n'.join(lines)
+
     def run_command_set_global_var(self, var_name, value):
         # To make sure that the UI reflects the global variable update, we
         # rebuld the overview area, and make sure that the general properties
         # are shown and refreshed.
         self.sigmund_extension.experiment.var.set(var_name, value)
+        self.sigmund_extension.experiment.build_item_tree()
         self.sigmund_extension.experiment.build_item_tree()
         self.sigmund_extension.tabwidget.open_general()
         self.sigmund_extension.tabwidget.currentWidget().refresh()
@@ -225,6 +277,10 @@ To modify an existing item:
         
 1. Call `tool_opensesame_select_item` to select an existing item
 2. Call `tool_opensesame_update_item_script` to update the script of the selected item
+
+To update a loop table:
+
+1. Call `tool_opensesame_update_loop_table` with a dictionary of columns, where each key is a variable name and each value is a list of cell values
 '''
         self._transient_system_prompt = system_prompt
         self._foundation_document_topics = ['opensesame']
