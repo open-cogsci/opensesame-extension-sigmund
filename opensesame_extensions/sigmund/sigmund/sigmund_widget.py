@@ -26,7 +26,9 @@ class OpenSesameSigmundWidget(SigmundWidget):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._transient_settings = {  
+        self._transient_settings = {
+            # These are interactive tools that result in a command function being
+            # called.
             'tool_opensesame_select_item': 'true',
             'tool_opensesame_new_item': 'true',
             'tool_opensesame_remove_item_from_parent': 'true',
@@ -34,7 +36,12 @@ class OpenSesameSigmundWidget(SigmundWidget):
             'tool_opensesame_add_existing_item_to_parent': 'true',
             'tool_opensesame_update_item_script': 'true',
             'tool_opensesame_update_loop_table': 'true',
-            'tool_opensesame_set_global_var': 'true'
+            'tool_opensesame_update_run_if_expression': 'true',
+            'tool_opensesame_set_global_var': 'true',
+            'tool_opensesame_get_general_script': 'true',
+            'tool_opensesame_update_general_script': 'true',
+            # These are non-interactive tools that are handled by the server.
+            'tool_opensesame_get_syntax_documentation': 'true'
         }
         
     @property
@@ -119,6 +126,17 @@ class OpenSesameSigmundWidget(SigmundWidget):
         self.items[parent_item_name].open_tab()
         return f'Item has been removed from {parent_item_name}.'
         
+    def run_command_update_run_if_expression(self, parent_sequence_name, index=0,
+                                             run_if=True):
+        if parent_sequence_name not in self.items:
+            return f'Parent sequence item {parent_sequence_name} does not exist.'
+        if not self._confirm_action(
+                _('Update run-if expression in {}').format(parent_sequence_name)):
+            return ACTION_CANCELLED
+        self.items[parent_sequence_name].set_run_if(index, run_if)
+        self.items[parent_sequence_name].open_tab()
+        return f'Run-if expression has been updated in {parent_sequence_name}.'
+        
     def run_command_rename_item(self, from_item_name, to_item_name):
         if from_item_name not in self.items:
             return f'Item {from_item_name} does not exist.'
@@ -184,6 +202,7 @@ class OpenSesameSigmundWidget(SigmundWidget):
         # Assign the new DataMatrix to the loop item and update the UI
         loop_item.dm = dm
         loop_item.update()
+        self.items[item_name].open_tab()
         return f'Loop table of {item_name} has been updated with {lengths[0]} cycles and {len(columns)} columns.'
 
     @staticmethod
@@ -215,6 +234,13 @@ class OpenSesameSigmundWidget(SigmundWidget):
         self.sigmund_extension.tabwidget.open_general()
         self.sigmund_extension.tabwidget.currentWidget().refresh()
         return f'Global experiment variable {var_name} has been set to {value}.'
+        
+    def run_command_get_general_script(self):
+        return self.sigmund_extension.experiment.to_string()
+        
+    def run_command_update_general_script(self, script):
+        self.sigmund_extension.main_window.regenerate(self.ui.editor.toPlainText())
+        return 'General script has been updated.'
 
     def _item_struct(self, item):
         d = {'item_name': item.name, 'item_type': item.item_type}

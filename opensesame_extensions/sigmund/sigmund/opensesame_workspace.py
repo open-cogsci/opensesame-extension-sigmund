@@ -62,7 +62,7 @@ class WorkspaceManager:
         script = self._item.to_string()
         script = textwrap.dedent(script[script.find(u'\t'):])
         script = f'''# You are now viewing the script of an OpenSesame item called {self._item.name} of type {self._item.item_type}. The scripting language is OpenSesame script (and not Python or JavaScript), a domain-specific language. You can use f-string syntax to include variables and Python expressions, like this: some_keyword="Some value with a {{variable_or_expression}}".
-#
+# IMPORTANT: The documentation contains reference syntax for this item type. Please follow this reference syntax closely.
 # IMPORTANT: You do not need to select {self._item.name}, because it is already selected. To modify this item script, use the opensesame_update_item_script tool.
 
 {script}
