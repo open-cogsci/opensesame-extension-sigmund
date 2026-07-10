@@ -239,8 +239,10 @@ class OpenSesameSigmundWidget(SigmundWidget):
         return self.sigmund_extension.experiment.to_string()
         
     def run_command_update_general_script(self, script):
-        self.sigmund_extension.main_window.regenerate(self.ui.editor.toPlainText())
-        return 'General script has been updated.'
+        err_msg = self.sigmund_extension.main_window.regenerate(script)
+        if err_msg is None:
+            return 'The general script has been updated. Please ask the user the review the experiment.'
+        return f'An error occurred while updating the general script:\n\n{err_msg}'
 
     def _item_struct(self, item):
         d = {'item_name': item.name, 'item_type': item.item_type}
