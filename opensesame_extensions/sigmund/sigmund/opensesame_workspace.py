@@ -17,7 +17,7 @@ class WorkspaceManager:
     def get(self):
         if self.item_name not in self._sigmund.item_store:
             self._item = None
-            return 'No item is currently selected.', 'markdown'
+            return None, None
         self._item = self._sigmund.item_store[self.item_name]
         if self._item.item_type == 'inline_script':
             return self._prepare_inline_script()
