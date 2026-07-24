@@ -272,7 +272,6 @@ class SigmundWidget(QWidget):
         message or tool results.
         """
         action = data.get("action", None)
-
         if not self.chat_widget:
             return False
 
@@ -297,15 +296,16 @@ class SigmundWidget(QWidget):
             self.chat_widget.setEnabled(True)
             # Attempt to apply workspace changes, if any
             workspace_content = data.get("workspace_content", "")
-            workspace_content = self._workspace_manager.prepare(workspace_content)            
             workspace_language = data.get("workspace_language", "markdown")            
+            if self._workspace_manager:
+                workspace_content = self._workspace_manager.prepare(
+                    workspace_content)
+                if not self._workspace_manager.has_changed(
+                    workspace_content, workspace_language
+                ):
+                    workspace_content = None
             on_connect = data.get("on_connect", False)
-            if (
-                not on_connect and self._workspace_manager
-                and workspace_content is not None and workspace_content.strip()
-                and self._workspace_manager.has_changed(workspace_content,
-                                                        workspace_language)
-            ):
+            if not on_connect and workspace_content:
                 # If the workspace content is a run command, we don't process it
                 # further.
                 if self.run_command(message_text, workspace_content):
@@ -334,14 +334,16 @@ class SigmundWidget(QWidget):
             logger.error(f'invalid or unhandled incoming message: {data}')
         return False    
             
-    def confirm_change(self, message_text, workspace_content):
+    def confirm_change(self, message_text, workspace_content,
+                       original_workspace_content=None):
         # Show diff, and if accepted, update
-        result = DiffDialog(
-            self,
-            message_text,
-            self._workspace_manager.strip_content(self._workspace_manager.content),
-            self._workspace_manager.strip_content(workspace_content)
-        ).exec()     
+        if self._workspace_manager:
+            original_workspace_content = self._workspace_manager.strip_content(
+                self._workspace_manager.content)
+            workspace_content = self._workspace_manager.strip_content(
+                workspace_content)
+        result = DiffDialog(self, message_text, original_workspace_content,
+                            workspace_content).exec()     
         return result == DiffDialog.Accepted   
             
     def run_command(self, message_text, workspace_content):
@@ -394,8 +396,10 @@ class SigmundWidget(QWidget):
             if result:
                 # The tool result prefix indicates to Sigmund that this 
                 # result should not be interpreted as a user message, but
-                # instead merged into the previous tool message.
-                self.send_user_message(f'::tool_result::{result}')
+                # instead merged into the previous tool message. We clear the
+                # workspace to avoid the tool from being called again.
+                self.send_user_message(f'::tool_result::{result}',
+                                       workspace_content='')
             return True
         logger.warning(f'no function for command from JSON data: {workspace_content}')
         return False

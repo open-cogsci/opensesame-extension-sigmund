@@ -5,7 +5,6 @@ from libopensesame.exceptions import UserAborted
 from libopensesame.oslogging import oslogger
 from libqtopensesame.extensions import BaseExtension
 from libqtopensesame.misc.config import cfg
-from . import opensesame_workspace as workspace
 from .sigmund_widget import OpenSesameSigmundWidget
 from sigmund_qtwidget.sigmund_dock_widget import SigmundDockWidget
 from libqtopensesame.misc.translate import translation_context
@@ -23,7 +22,6 @@ class Sigmund(BaseExtension):
         self._sigmund_widget = None
         self._visible = False
         self._current_exception = None
-        self._workspace_manager = workspace.WorkspaceManager(self)
         if cfg.sigmund_visible:
             self.activate()
 
@@ -50,7 +48,7 @@ Ask Sigmund to fix this
                 timeout=5000
             )
             return
-        self._workspace_manager.item_name = self._current_exception.item
+        self._sigmund_widget._current_item_name = self._current_exception.item
         if self._sigmund_widget:
             self._sigmund_widget.send_user_message(str(self._current_exception))
         self.extension_manager.fire(
@@ -63,7 +61,7 @@ Ask Sigmund to fix this
 
     def event_open_item(self, name):
         oslogger.info(f'Sigmund: opening item {name}')
-        self._workspace_manager.item_name = name
+        self._sigmund_widget._current_item_name = name
 
     def event_open_general_properties(self):
         oslogger.info('Sigmund: opening general properties')
@@ -74,8 +72,8 @@ Ask Sigmund to fix this
         self.event_open_item(None)
 
     def event_rename_item(self, from_name, to_name):
-        if self._workspace_manager.item_name == from_name:
-            self._workspace_manager.item_name = to_name
+        if self._sigmund_widget._current_item_name == from_name:
+            self._sigmund_widget._current_item_name = to_name
 
     def activate(self, *dummy):
         """
@@ -104,7 +102,6 @@ Ask Sigmund to fix this
             else:
                 font_size = cfg.pyqode_font_size
             self._sigmund_widget.setStyleSheet(f'font-size: {font_size}pt;')
-            self._sigmund_widget.set_workspace_manager(self._workspace_manager)
             self._sigmund_widget.sigmund_extension = self
             self.main_window.addDockWidget(Qt.RightDockWidgetArea,
                                            self._dock_widget)
