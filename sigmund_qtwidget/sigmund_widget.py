@@ -310,7 +310,8 @@ class SigmundWidget(QWidget):
                 # further.
                 if self.run_command(message_text, workspace_content):
                     return True
-                if self.confirm_change(message_text, workspace_content):
+                if self._workspace_manager and self.confirm_change(
+                        message_text, workspace_content):
                     try:
                         self._workspace_manager.set(workspace_content,
                                                     workspace_language)
