@@ -48,6 +48,8 @@ Ask Sigmund to fix this
                 timeout=5000
             )
             return
+        if not self._sigmund_widget:
+            return
         self._sigmund_widget._current_item_name = self._current_exception.item
         if self._sigmund_widget:
             self._sigmund_widget.send_user_message(str(self._current_exception))
@@ -60,6 +62,8 @@ Ask Sigmund to fix this
         )
 
     def event_open_item(self, name):
+        if not self._sigmund_widget:
+            return        
         oslogger.info(f'Sigmund: opening item {name}')
         self._sigmund_widget._current_item_name = name
 
@@ -72,6 +76,8 @@ Ask Sigmund to fix this
         self.event_open_item(None)
 
     def event_rename_item(self, from_name, to_name):
+        if not self._sigmund_widget:
+            return
         if self._sigmund_widget._current_item_name == from_name:
             self._sigmund_widget._current_item_name = to_name
 
