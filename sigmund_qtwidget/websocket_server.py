@@ -83,7 +83,8 @@ async def serve_ws(to_main_queue, to_server_queue):
     async with websockets.serve(
         lambda ws: server_handler(ws, to_main_queue, to_server_queue),
         "localhost",
-        8080
+        8080,
+        max_size=None
     ):
         # Prevent the function from returning so the server stays alive
         await asyncio.Future()
