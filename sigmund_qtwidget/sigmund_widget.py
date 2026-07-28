@@ -289,6 +289,10 @@ class SigmundWidget(QWidget):
             message_text = data.get("message", "")
             self.chat_widget.append_message("user", message_text)
 
+        elif action == "ai_incoming":            
+            if self.chat_widget:
+                self.chat_widget.setState('waiting')
+            
         elif action == "ai_message":
             # Show the AI message
             message_text = data.get("message", "")
