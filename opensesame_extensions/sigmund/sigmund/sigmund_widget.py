@@ -172,7 +172,7 @@ class OpenSesameSigmundWidget(SigmundWidget):
         item_type = self.current_item_type
         try:
             if item_type == 'inline_script':
-                self._parse_inline_javascript(script)
+                self._parse_inline_script(script)
             elif item_type == 'inline_javascript':
                 self._parse_inline_javascript(script)
             else:
