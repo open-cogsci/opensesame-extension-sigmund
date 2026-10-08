@@ -25,6 +25,7 @@ class OpenSesameSigmundWidget(SigmundWidget):
     and settings.
     """
     chat_widget_cls = OpenSesameChatWidget
+    command_function_prefix = 'opensesame_'
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -83,8 +84,9 @@ class OpenSesameSigmundWidget(SigmundWidget):
                                      QMessageBox.Yes)        
         return reply == QMessageBox.Yes
         
-    def run_command(self, message_text, workspace_content):
-        is_command = super().run_command(message_text, workspace_content)
+    def run_command(self, message_text, workspace_content, return_result=False):
+        is_command = super().run_command(message_text, workspace_content,
+                                         return_result)
         # Sigmund sometimes forgets to call the tool function, and instead 
         # requests the tool use in the reply based on previous messages. If this
         # happens, send a kind reminder.

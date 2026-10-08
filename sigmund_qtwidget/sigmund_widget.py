@@ -33,6 +33,7 @@ class SigmundWidget(QWidget):
     server_state_changed = Signal(str)  # Emitted when server state changes
     token_received = Signal(str)
     chat_widget_cls = chat_widget.ChatWidget
+    command_function_prefix = None
 
     def __init__(self, parent=None, application='Unknown'):
         super().__init__(parent)
@@ -350,8 +351,27 @@ class SigmundWidget(QWidget):
         result = DiffDialog(self, message_text, original_workspace_content,
                             workspace_content).exec()     
         return result == DiffDialog.Accepted   
+        
+    def run_command_multiple_tools(self, tools):
+        """This is a special command that handles the `multiple_tools` tool, 
+        which wraps multiple tools into one call. Here we handle this by calling
+        all tools one by one, collecting the results, and then returning all
+        results as a dumped json string.
+        """
+        results = []
+        for tool in tools:
+            command = tool['name']
+            if (self.command_function_prefix is not None and
+                    command.startswith(self.command_function_prefix)):
+                command = command[len(self.command_function_prefix):]
+            command = {'command': command}
+            args = json.loads(tool['args'])
+            command.update(args)
+            results.append(
+                self.run_command(None, json.dumps(command), return_result=True))
+        return json.dumps(results)            
             
-    def run_command(self, message_text, workspace_content):
+    def run_command(self, message_text, workspace_content, return_result=False):
         """Special commands can be received as JSON objects in the workspace.
 
         Example:
@@ -398,6 +418,8 @@ class SigmundWidget(QWidget):
                 result = getattr(self, fnc_name)(**data)
             except Exception as e:
                 result = f'An error occurred while executing command: {e}'
+            if return_result:
+                return result
             if result:
                 # The tool result prefix indicates to Sigmund that this 
                 # result should not be interpreted as a user message, but
@@ -406,7 +428,10 @@ class SigmundWidget(QWidget):
                 self.send_user_message(f'::tool_result::{result}',
                                        workspace_content='')
             return True
-        logger.warning(f'no function for command from JSON data: {workspace_content}')
+        warning = f'no function for command from JSON data: {workspace_content}'
+        logger.warning(warning)
+        if return_result:
+            return warning
         return False
         
     def _request_token(self):
