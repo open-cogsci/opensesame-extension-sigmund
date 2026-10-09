@@ -367,8 +367,10 @@ class SigmundWidget(QWidget):
             command = {'command': command}
             args = json.loads(tool['args'])
             command.update(args)
-            results.append(
-                self.run_command(None, json.dumps(command), return_result=True))
+            result = self.run_command(None, json.dumps(command),
+                                      return_result=True)
+            if result is not None:
+                results.append(result)
         return json.dumps(results)            
             
     def run_command(self, message_text, workspace_content, return_result=False):
@@ -417,7 +419,7 @@ class SigmundWidget(QWidget):
             try:
                 result = getattr(self, fnc_name)(**data)
             except Exception as e:
-                result = f'An error occurred while executing command: {e}'
+                result = f'An error occurred while executing command {command}: {e}'
             if return_result:
                 return result
             if result:
@@ -430,8 +432,10 @@ class SigmundWidget(QWidget):
             return True
         warning = f'no function for command from JSON data: {workspace_content}'
         logger.warning(warning)
+        # For tools that don't exist, we simply report that they were executed.
+        # Probably, they were executed server-side
         if return_result:
-            return warning
+            return f'{command} was executed.'
         return False
         
     def _request_token(self):

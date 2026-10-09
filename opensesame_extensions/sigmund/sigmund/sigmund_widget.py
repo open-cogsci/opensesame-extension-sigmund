@@ -90,7 +90,7 @@ class OpenSesameSigmundWidget(SigmundWidget):
         # Sigmund sometimes forgets to call the tool function, and instead 
         # requests the tool use in the reply based on previous messages. If this
         # happens, send a kind reminder.
-        if not is_command and \
+        if message_text and not is_command and \
                 '(suggesting opensesame action)' in message_text.lower():
             self.send_user_message(MISSING_TOOL_CALL)
             return True  # To avoid the message from being processed further
