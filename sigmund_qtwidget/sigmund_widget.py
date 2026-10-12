@@ -371,6 +371,12 @@ class SigmundWidget(QWidget):
                                       return_result=True)
             if result is not None:
                 results.append(result)
+        # If no tools actually returned anything, we return False. This will
+        # avoid Sigmund from being asked to give feedback. This is important,
+        # because it may mean that all tools were executed server-side, in which
+        # case the server should give feedback.
+        if not results:
+            return False
         return json.dumps(results)            
             
     def run_command(self, message_text, workspace_content, return_result=False):
@@ -435,7 +441,7 @@ class SigmundWidget(QWidget):
         # For tools that don't exist, we simply report that they were executed.
         # Probably, they were executed server-side
         if return_result:
-            return f'{command} was executed.'
+            return
         return False
         
     def _request_token(self):
