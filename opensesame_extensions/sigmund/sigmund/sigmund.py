@@ -22,7 +22,7 @@ class Sigmund(BaseExtension):
         self._sigmund_widget = None
         self._visible = False
         self._current_exception = None
-        if cfg.sigmund_visible:
+        if not cfg.sigmund_mcp_relay_enabled and cfg.sigmund_visible:
             self.activate()
 
     def event_end_experiment(self, ret_val):
@@ -86,6 +86,9 @@ Ask Sigmund to fix this
         Called when the extension is activated. Toggles the dock’s visibility
         and starts the server if needed.
         """
+        if cfg.sigmund_mcp_relay_enabled:
+            return self.extension_manager['sigmund_mcp_relay'].activate()            
+        
         # Toggle
         if self._visible:
             cfg.sigmund_visible = self._visible = False

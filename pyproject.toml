@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "opensesame-extension-sigmund"
-version = "1.4.2"
+version = "1.5.0"
 description = "SigmundAI copilot extension for OpenSesame and Sigmund Analyst"
 authors = ["Sebastiaan Mathôt <s.mathot@cogsci.nl>"]
 readme = "readme.md"
@@ -14,10 +14,8 @@ repository = "https://github.com/open-cogsci/opensesame-extension-sigmund"
 
 [tool.poetry.dependencies]
 websockets = ">= 10"
-
-[tool.wheel2deb.dependencies]
-python = ">= 3.7"
-websockets = ">= 10"
+pyqt_code_editor = ">= 1.3"
+opensesame-core = ">= 4.1.24"
 
 [build-system]
 requires = ["poetry-core"]
