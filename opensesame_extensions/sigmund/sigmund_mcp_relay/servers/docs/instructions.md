@@ -62,7 +62,7 @@ count_trial_sequence % 10 == 1
 
 The following variables have a special meaning in OpenSesame. Do not make up your own variable names, but use these variable names whenever they are applicable.
 
-Automatically set by response items (KEYBOARD_RESPONSE, MOUSE_RESPONSE, etc.):
+Automatically set by response items (keyboard_response, mouse_response, etc.):
 
 - `response`: the participant's last response (key name, mouse button, etc.)
 - `response_time`: the response time for the participant's last response in milliseconds
@@ -73,3 +73,32 @@ Automatically set by response items (KEYBOARD_RESPONSE, MOUSE_RESPONSE, etc.):
 Used by response items (KEYBOARD_RESPONSE, MOUSE_RESPONSE, etc.):
 
 - `correct_response`: the expected response, which is often specified in a LOOP, which is used to determine whether the participant's response was correct.
+
+
+# Available item types
+
+## Built-in item types
+
+- sequence: Runs multiple other items in a sequence. Each item has a conditional (run-if) expression, which can be usef for flow control.
+- loop: Runs a single item multiple times. Defines independent variables.
+- sketchad: Displays visual stimuli. Should be used for time-critical stimuli.
+- feedback: Displays visual stimuli. Unlike the sketchpad, the feedback item is not prepared in advance. Therefore, it is suitable for presenting feedback regarding repsonses. Should not be used for time-critical stimuli.
+- sampler: Plays audio files.
+- synth: Generates simple sounds (beeps).
+- keyboard_response: Collects key-press responses.
+- mouse_response: Collects mouse-click responses.
+- logger: Logs data to file.
+- inline_script: Runs Python script. Not compatible with OSWeb/ browser-based experiments.
+
+## OSWeb item types (for browser-based experiments only)
+
+- inline_html: Shows an HTML form.
+- inline_javascript: Runs JavaScript.
+
+
+## Form item types
+
+- form_text_display: Shows a text with an OK button.
+- form_multiple_choice: Shows a multiple-choice question.
+- form_tex_input: Shows a text-input form.
+- form_consent: Shows a consent form.
