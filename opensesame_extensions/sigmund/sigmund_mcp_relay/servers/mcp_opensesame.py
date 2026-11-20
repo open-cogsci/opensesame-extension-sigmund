@@ -15,11 +15,11 @@ call blocks until the GUI thread has produced a result.
 import asyncio
 import functools
 import logging
-import re
 import traceback
 from pathlib import Path
 from jinja2 import Template
 from qtpy.QtWidgets import QMessageBox
+from datamatrix import DataMatrix
 from mcp.server import MCPServer
 from mcp_relay.agent import call_on_gui_thread
 from libqtopensesame.misc.config import cfg
@@ -29,12 +29,6 @@ _ = translation_context('sigmund_mcp_relay', category='extension')
 logger = logging.getLogger(__name__)
 
 ACTION_CANCELLED = 'I do not approve this action.'
-
-_INLINE_SCRIPT_PATTERN = re.compile(
-    r'# START_PREPARE_PHASE\s*(.*?)\s*# START_RUN_PHASE\s*(.*)', re.DOTALL)
-_INLINE_JAVASCRIPT_PATTERN = re.compile(
-    r'// START_PREPARE_PHASE\s*(.*?)\s*// START_RUN_PHASE\s*(.*)', re.DOTALL)
-
 
 # ----------------------------------------------------------------------
 # Helpers. All _tool functions below MUST run on the GUI thread (they are
@@ -74,52 +68,92 @@ def _script_error(exc_info):
 '''
 
 
+def _get_existing_item(extension, item_name):
+    """Returns (item, None) if item_name exists, else (None, error message)."""
+    items = extension.item_store
+    if item_name not in items:
+        return None, f'Item {item_name} does not exist.'
+    return items[item_name], None
+
+
+def _adjust_index(index, length):
+    """Converts a negative index into its positive equivalent."""
+    return index + length if index < 0 else index
+
+
+def _create_item(extension, item_name, item_type, parent_item_name, index):
+    """Validates the request, asks for confirmation, creates the new item and
+    inserts it into the parent item. Returns (item, None) on success, or
+    (None, error message) on failure.
+    """
+    items = extension.item_store
+    if item_name in items:
+        return None, (f'Item {item_name} already exists, '
+                       'please choose a different name.')
+    if parent_item_name not in items:
+        return None, f'Parent item {parent_item_name} does not exist.'
+    if not items.valid_type(item_type):
+        return None, f'Item type {item_type} does not exist.'
+    if not _confirm_action(extension, _(
+            'Create new item {} of type {} in {}?').format(
+            item_name, item_type, parent_item_name)):
+        return None, ACTION_CANCELLED
+    item = items.new(item_type, item_name)
+    items[parent_item_name].insert_child_item(item.name, index)
+    return item, None
+
+
+def _confirm_script_change(extension, item_name, script):
+    """Asks the user to review a script change for item_name."""
+    return _confirm_action(extension, _(
+        'Sigmund wants to change the script of {}.').format(item_name)
+        + '\n\n' + script)
+
+
+def _apply_script_safely(item, script):
+    """Applies script to item. Returns None on success, else an error message.
+    """
+    try:
+        _apply_script(item, script)
+    except Exception:
+        return _script_error(traceback.format_exc())
+    return None
+
+
+def _set_prepare_run_scripts(item, prepare_script, run_script):
+    """Sets the prepare/ run scripts of an inline_script or
+    inline_javascript item and refreshes the UI.
+    """
+    item.var._prepare = prepare_script or ''
+    item.var._run = run_script or ''
+    item.update()
+    item.open_tab()
+
+
 # ----------------------------------------------------------------------
 # Tool implementations (GUI thread)
 # ----------------------------------------------------------------------
 
 def _new_item(extension, item_name, item_type, parent_item_name, index, script):
-    items = extension.item_store
-    if item_name in items:
-        return f'Item {item_name} already exists, please choose a different name.'
-    if parent_item_name not in items:
-        return f'Parent item {parent_item_name} does not exist.'
-    if not items.valid_type(item_type):
-        return f'Item type {item_type} does not exist.'
-    if not _confirm_action(extension, _(
-            'Create new item {} of type {} in {}?').format(
-            item_name, item_type, parent_item_name)):
-        return ACTION_CANCELLED
-    item = items.new(item_type, item_name)
-    items[parent_item_name].insert_child_item(item.name, index)    
+    item, error = _create_item(extension, item_name, item_type,
+                               parent_item_name, index)
+    if error is not None:
+        return error
     item.open_tab()
     if script is not None:
-        try:
-            _apply_script(items[item.name], script)
-        except Exception:
-            return _script_error(traceback.format_exc())    
+        error = _apply_script_safely(item, script)
+        if error is not None:
+            return error
     return f'Item {item.name} has been created and is now selected.'
 
 
 def _new_prepare_run_item(extension, item_name, item_type, parent_item_name,
                           index, prepare_script, run_script):
-    items = extension.item_store
-    if item_name in items:
-        return f'Item {item_name} already exists, please choose a different name.'
-    if parent_item_name not in items:
-        return f'Parent item {parent_item_name} does not exist.'
-    if not items.valid_type(item_type):
-        return f'Item type {item_type} does not exist.'
-    if not _confirm_action(extension, _(
-            'Create new item {} of type {} in {}?').format(
-            item_name, item_type, parent_item_name)):
-        return ACTION_CANCELLED
-    item = items.new(item_type, item_name)
-    items[parent_item_name].insert_child_item(item.name, index)    
-    item.var._prepare = prepare_script if prepare_script else ''
-    item.var._run = run_script if run_script else ''
-    item.update()
-    item.open_tab()
+    item, error = _create_item(extension, item_name, item_type,
+                               parent_item_name, index)
+    if error is not None:
+        return error
+    _set_prepare_run_scripts(item, prepare_script, run_script)
     return f'Item {item.name} has been created and is now selected.'
 
 
@@ -131,8 +165,7 @@ def _remove_item_from_parent(extension, parent_item_name, index):
     children = parent.direct_children()
     if not children:
         return f'Item {parent_item_name} has no children.'
-    if index < 0:
-        index += len(children)
+    index = _adjust_index(index, len(children))
     if index < 0 or index >= len(children):
         return (f'Index {index} is out of range: {parent_item_name} has '
                 f'{len(children)} children.')
@@ -148,8 +181,9 @@ def _remove_item_from_parent(extension, parent_item_name, index):
 
 def _rename_item(extension, from_item_name, to_item_name):
     items = extension.item_store
-    if from_item_name not in items:
-        return f'Item {from_item_name} does not exist.'
+    item, error = _get_existing_item(extension, from_item_name)
+    if error is not None:
+        return error
     if to_item_name in items:
         return (f'Item {to_item_name} already exists, '
                 'please choose a different name.')
@@ -166,8 +200,9 @@ def _rename_item(extension, from_item_name, to_item_name):
 def _add_existing_item_to_parent(extension, item_name, parent_item_name,
                                  index):
     items = extension.item_store
-    if item_name not in items:
-        return f'Item {item_name} does not exist.'
+    item, error = _get_existing_item(extension, item_name)
+    if error is not None:
+        return error
     if parent_item_name not in items:
         return f'Parent item {parent_item_name} does not exist.'
     if not _confirm_action(extension, _(
@@ -180,44 +215,34 @@ def _add_existing_item_to_parent(extension, item_name, parent_item_name,
 
 
 def _update_item_script(extension, item_name, script):
-    items = extension.item_store
-    if item_name not in items:
-        return f'Item {item_name} does not exist.'
-    item = items[item_name]
-    if not _confirm_action(extension, _(
-            'Sigmund wants to change the script of {}.').format(item_name)
-            + '\n\n' + script):
+    item, error = _get_existing_item(extension, item_name)
+    if error is not None:
+        return error
+    if not _confirm_script_change(extension, item_name, script):
         return ACTION_CANCELLED
-    try:
-        _apply_script(item, script)
-    except Exception:
-        return _script_error(traceback.format_exc())
+    error = _apply_script_safely(item, script)
+    if error is not None:
+        return error
     return f'{item_name} has been updated.'
-    
-    
-def _update_prepare_run_item(extension, item_name, prepare_script, run_script):    
-    items = extension.item_store
-    if item_name not in items:
-        return f'Item {item_name} does not exist.'
-    item = items[item_name]
+
+
+def _update_prepare_run_item(extension, item_name, prepare_script, run_script):
+    item, error = _get_existing_item(extension, item_name)
+    if error is not None:
+        return error
     if '_prepare' not in item.var or '_run' not in item.var:
         return f'{item_name} is not a valid item type for this action'
-    if not _confirm_action(extension, _(
-            'Sigmund wants to change the script of {}.').format(item_name)
-            + '\n\n' + prepare_script + '\n\n' + run_script):
+    if not _confirm_script_change(extension, item_name,
+                                  prepare_script + '\n\n' + run_script):
         return ACTION_CANCELLED
-    item.var._prepare = prepare_script
-    item.var._run = run_script
-    item.update()
-    item.open_tab()
+    _set_prepare_run_scripts(item, prepare_script, run_script)
     return f'{item_name} has been updated.'
 
 
 def _update_loop_table(extension, item_name, columns):
-    items = extension.item_store
-    if item_name not in items:
-        return f'Item {item_name} does not exist.'
-    loop_item = items[item_name]
+    loop_item, error = _get_existing_item(extension, item_name)
+    if error is not None:
+        return error
     if loop_item.item_type != 'loop':
         return f'Item {item_name} is not a loop item.'
     if not columns:
@@ -226,7 +251,6 @@ def _update_loop_table(extension, item_name, columns):
     lengths = [len(values) for values in columns.values()]
     if len(set(lengths)) > 1:
         return f'All columns must have the same length, but got: {lengths}.'
-    from datamatrix import DataMatrix
     # Build a new DataMatrix with the provided columns
     dm = DataMatrix(length=lengths[0])
     for col_name, values in columns.items():
@@ -250,8 +274,7 @@ def _update_run_if_expression(extension, parent_sequence_name, index, run_if):
     if not hasattr(sequence, 'set_run_if'):
         return f'Item {parent_sequence_name} is not a sequence item.'
     n_children = len(sequence.items)
-    if index < 0:
-        index += n_children
+    index = _adjust_index(index, n_children)
     if index < 0 or index >= n_children:
         return (f'Index {index} is out of range: {parent_sequence_name} has '
                 f'{n_children} children.')
