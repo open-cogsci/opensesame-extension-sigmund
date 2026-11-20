@@ -78,12 +78,15 @@ class _OpenSesameHarness:
         # the no-dial-out guarantee holds in any context.
         import mcp_relay.agent.widget as agent_widget
         agent_widget.load_state = lambda state_file: None
-        # QtOpenSesame parses the command line during construction.
+        # QtOpenSesame parses the command line during construction. We want to
+        # start clean, but also not save the cleaned settings to avoid 
+        # interfering with the user config.
         old_argv = sys.argv[:]
         sys.argv = ['opensesame', '--start-clean']
+        object.__setattr__(cfg, 'save' , lambda: None)
         try:
             for name in DISABLED_EXTENSIONS:
-                cfg_key = 'plugin_enabled_%s' % name
+                cfg_key = f'plugin_enabled_{name}'
                 cfg.register(cfg_key, True)
                 setattr(cfg, cfg_key, False)
             from qtpy.QtWidgets import QApplication

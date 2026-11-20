@@ -76,33 +76,47 @@ class check_tools(unittest.TestCase):
         self.assertIn('not_a_type', res)
         self.assertNotIn('orphan', h.items)
         self.assertNotIn('bogus', h.items)
-        # --- update_item_script with phase markers ---
-        call('new_item', item_name='my_script', item_type='inline_script',
-             parent_item_name='experiment')
-        result = call('update_item_script', item_name='my_script',
-                      script=('# START_PREPARE_PHASE\na = 1\n'
-                              '# START_RUN_PHASE\nb = 2\n'))
-        self.assertIn('updated', result)
-        item = h.items['my_script']
-        self.assertEqual(item.var._prepare, 'a = 1')
-        self.assertEqual(item.var._run, 'b = 2')
-        # Without markers, all code goes to the run phase and the prepare
-        # phase is cleared.
-        result = call('update_item_script', item_name='my_script',
-                      script='print(2)')
-        self.assertIn('updated', result)
-        item = h.items['my_script']
-        self.assertEqual(item.var._prepare, '')
-        self.assertEqual(item.var._run, 'print(2)')
-        self.assertIn('does not exist',
-            call('update_item_script', item_name='nothere', script='x'))
+        # --- edit item scripts ---
+        res = call('new_item', item_name='my_sketchpad2',
+                   item_type='sketchpad', parent_item_name='experiment',
+                   index=0, script='draw textline x=0 y=0 text="before"')
+        self.assertIn('before', h.items['my_sketchpad2'].to_string())
+        res = call('update_item_script', item_name='my_sketchpad2',
+                   script='draw textline x=0 y=0 text="after"')
+        self.assertIn('after', h.items['my_sketchpad2'].to_string())
+        # --- new inline_script ---
+        res = call('new_inline_script', item_name='my_inline_script',
+                   parent_item_name='experiment',
+                   index=0, prepare_script='x = 0', run_script='print(x)')
+        self.assertIn('my_inline_script', h.items)
+        self.assertIn('x = 0', h.items['my_inline_script'].var._prepare)
+        self.assertIn('print(x)', h.items['my_inline_script'].var._run)
+        # --- edit inline_script ---
+        res = call('update_inline_script', item_name='my_inline_script',
+                   prepare_script='y = 0', run_script='print(y)')
+        self.assertIn('y = 0', h.items['my_inline_script'].var._prepare)
+        self.assertIn('print(y)', h.items['my_inline_script'].var._run)
+        res = call('update_inline_script', item_name='my_sketchpad',
+                   prepare_script='y = 0', run_script='print(y)')
+        self.assertIn('not a valid item type', res)
+        # --- new inline_javascript ---
+        res = call('new_inline_javascript', item_name='my_inline_javascript',
+                   parent_item_name='experiment',
+                   index=0, prepare_script='x = 0', run_script='console.log(x)')
+        self.assertIn('my_inline_javascript', h.items)
+        self.assertIn('x = 0', h.items['my_inline_javascript'].var._prepare)
+        self.assertIn('console.log(x)', h.items['my_inline_javascript'].var._run)
+        # --- edit inline_javascript ---
+        res = call('update_inline_javascript', item_name='my_inline_javascript',
+                   prepare_script='y = 0', run_script='console.log(y)')
+        self.assertIn('y = 0', h.items['my_inline_javascript'].var._prepare)
+        self.assertIn('console.log(y)', h.items['my_inline_javascript'].var._run)
         # --- rename_item, optionally with an initializing script ---
-        result = call('rename_item', from_item_name='my_script',
-                      to_item_name='my_renamed', script='print(2)')
+        result = call('rename_item', from_item_name='my_sketchpad2',
+                      to_item_name='my_renamed')
         self.assertIn('has been renamed to', result)
         self.assertIn('my_renamed', h.items)
-        self.assertNotIn('my_script', h.items)
-        self.assertEqual(h.items['my_renamed'].var._run, 'print(2)')
+        self.assertNotIn('my_sketchpad2', h.items)
         self.assertIn('already exists',
             call('rename_item', from_item_name='my_renamed',
                  to_item_name='my_sketchpad'))
@@ -187,6 +201,12 @@ class check_tools(unittest.TestCase):
         self.assertIn('does not exist',
             call('add_existing_item_to_parent', item_name='my_sketchpad',
                  parent_item_name='nothere'))
+        # -- check documentation helpers ---
+        self.assertIn('sketchpad',
+                      call('get_item_example', item_type='sketchpad'))
+        self.assertIn('Error:',
+                      call('get_item_example', item_type='fake_item_type'))
+        self.assertIn('define', call('get_general_script_example'))
 
 
 class check_action_review(unittest.TestCase):
@@ -263,7 +283,6 @@ class check_mcp_session(unittest.TestCase):
         async def main(session):
 
             tools = await session.list_tools()
-            self.assertEqual(len(tools.tools), 10)
             result = await session.call_tool(
                 'set_global_var',
                 {'var_name': 'session_var', 'value': 'ok'})

@@ -16,6 +16,7 @@ repository = "https://github.com/open-cogsci/opensesame-extension-sigmund"
 websockets = ">= 10"
 pyqt_code_editor = ">= 1.3"
 opensesame-core = ">= 4.1.24"
+jinja2 = "*"
 
 [build-system]
 requires = ["poetry-core"]

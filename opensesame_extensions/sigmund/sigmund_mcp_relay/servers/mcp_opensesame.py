@@ -17,10 +17,11 @@ import functools
 import logging
 import re
 import traceback
-
+from pathlib import Path
+from jinja2 import Template
 from qtpy.QtWidgets import QMessageBox
-
-from mcp_relay.agent import MCPServer, call_on_gui_thread
+from mcp.server import MCPServer
+from mcp_relay.agent import call_on_gui_thread
 from libqtopensesame.misc.config import cfg
 from libqtopensesame.misc.translate import translation_context
 
@@ -57,50 +58,11 @@ def _confirm_action(extension, msg):
     return reply == QMessageBox.Yes
 
 
-def _parse_inline_script(item, content):
-    """Applies Python code to an inline_script item, based on the
-    START_PREPARE_PHASE / START_RUN_PHASE markers.
-    """
-    match = _INLINE_SCRIPT_PATTERN.search(content)
-    if match:
-        prepare = match.group(1).strip()
-        run = match.group(2).strip()
-    else:
-        prepare = ''
-        run = content
-    item.var._prepare = prepare
-    item.var._run = run
-    item.update()
-    item.open_tab()
-
-
-def _parse_inline_javascript(item, content):
-    """Applies JavaScript code to an inline_javascript item, based on the
-    START_PREPARE_PHASE / START_RUN_PHASE markers.
-    """
-    match = _INLINE_JAVASCRIPT_PATTERN.search(content)
-    if match:
-        prepare = match.group(1).strip()
-        run = match.group(2).strip()
-    else:
-        prepare = ''
-        run = content
-    item.var._prepare = prepare
-    item.var._run = run
-    item.update()
-    item.open_tab()
-
-
 def _apply_script(item, script):
     """Applies a script to an item, dispatching on the item type."""
-    if item.item_type == 'inline_script':
-        _parse_inline_script(item, script)
-    elif item.item_type == 'inline_javascript':
-        _parse_inline_javascript(item, script)
-    else:
-        item.from_string(script)
-        item.update()
-        item.open_tab()
+    item.from_string(script)
+    item.update()
+    item.open_tab()
 
 
 def _script_error(exc_info):
@@ -116,7 +78,7 @@ def _script_error(exc_info):
 # Tool implementations (GUI thread)
 # ----------------------------------------------------------------------
 
-def _new_item(extension, item_name, item_type, parent_item_name, index):
+def _new_item(extension, item_name, item_type, parent_item_name, index, script):
     items = extension.item_store
     if item_name in items:
         return f'Item {item_name} already exists, please choose a different name.'
@@ -129,7 +91,34 @@ def _new_item(extension, item_name, item_type, parent_item_name, index):
             item_name, item_type, parent_item_name)):
         return ACTION_CANCELLED
     item = items.new(item_type, item_name)
-    items[parent_item_name].insert_child_item(item.name, index)
+    items[parent_item_name].insert_child_item(item.name, index)    
+    item.open_tab()
+    if script is not None:
+        try:
+            _apply_script(items[item.name], script)
+        except Exception:
+            return _script_error(traceback.format_exc())    
+    return f'Item {item.name} has been created and is now selected.'
+
+
+def _new_prepare_run_item(extension, item_name, item_type, parent_item_name,
+                          index, prepare_script, run_script):
+    items = extension.item_store
+    if item_name in items:
+        return f'Item {item_name} already exists, please choose a different name.'
+    if parent_item_name not in items:
+        return f'Parent item {parent_item_name} does not exist.'
+    if not items.valid_type(item_type):
+        return f'Item type {item_type} does not exist.'
+    if not _confirm_action(extension, _(
+            'Create new item {} of type {} in {}?').format(
+            item_name, item_type, parent_item_name)):
+        return ACTION_CANCELLED
+    item = items.new(item_type, item_name)
+    items[parent_item_name].insert_child_item(item.name, index)    
+    item.var._prepare = prepare_script if prepare_script else ''
+    item.var._run = run_script if run_script else ''
+    item.update()
     item.open_tab()
     return f'Item {item.name} has been created and is now selected.'
 
@@ -157,7 +146,7 @@ def _remove_item_from_parent(extension, parent_item_name, index):
     return f'Item {item_name} has been removed from {parent_item_name}.'
 
 
-def _rename_item(extension, from_item_name, to_item_name, script):
+def _rename_item(extension, from_item_name, to_item_name):
     items = extension.item_store
     if from_item_name not in items:
         return f'Item {from_item_name} does not exist.'
@@ -165,18 +154,11 @@ def _rename_item(extension, from_item_name, to_item_name, script):
         return (f'Item {to_item_name} already exists, '
                 'please choose a different name.')
     msg = _('Rename item {} to {}').format(from_item_name, to_item_name)
-    if script is not None:
-        msg += _(' and initialize its script with the provided script')
     if not _confirm_action(extension, msg + '?'):
         return ACTION_CANCELLED
     new_name = items.rename(from_item_name, to_item_name)
     if new_name is None:
         return f'Item {from_item_name} could not be renamed to {to_item_name}.'
-    if script is not None:
-        try:
-            _apply_script(items[new_name], script)
-        except Exception:
-            return _script_error(traceback.format_exc())
     items[new_name].open_tab()
     return f'{from_item_name} has been renamed to {new_name}.'
 
@@ -210,6 +192,24 @@ def _update_item_script(extension, item_name, script):
         _apply_script(item, script)
     except Exception:
         return _script_error(traceback.format_exc())
+    return f'{item_name} has been updated.'
+    
+    
+def _update_prepare_run_item(extension, item_name, prepare_script, run_script):    
+    items = extension.item_store
+    if item_name not in items:
+        return f'Item {item_name} does not exist.'
+    item = items[item_name]
+    if '_prepare' not in item.var or '_run' not in item.var:
+        return f'{item_name} is not a valid item type for this action'
+    if not _confirm_action(extension, _(
+            'Sigmund wants to change the script of {}.').format(item_name)
+            + '\n\n' + prepare_script + '\n\n' + run_script):
+        return ACTION_CANCELLED
+    item.var._prepare = prepare_script
+    item.var._run = run_script
+    item.update()
+    item.open_tab()
     return f'{item_name} has been updated.'
 
 
@@ -287,6 +287,18 @@ def _update_general_script(extension, script):
         return ('The general script has been updated. '
                 'Please ask the user to review the experiment.')
     return f'An error occurred while updating the general script:\n\n{err_msg}'
+    
+
+def _get_doc(path, **kwargs):
+    return Template((Path(__file__).parent / 'docs' / path).read_text()).render(kwargs)
+    
+
+def _available_item_types(ext):
+    if ext is None:
+        return []
+    return (
+        ext.item_store.built_in_types + list(ext.plugin_manager._plugins.keys())
+    )
 
 
 # ----------------------------------------------------------------------
@@ -308,44 +320,82 @@ def make_mcp(extension):
             call_on_gui_thread, functools.partial(fnc, extension, *args))
 
     def inner():
-        server = MCPServer('opensesame')
+        instructions = _get_doc('instructions.md',
+                available_item_types=_available_item_types(extension))
+        print(instructions)
+        server = MCPServer('opensesame', instructions=instructions)
 
         @server.tool()
         async def new_item(item_name: str, item_type: str,
-                           parent_item_name: str, index: int = 0) -> str:
-            """Create a new item of the given type (e.g. 'sequence', 'loop',
-            'sketchpad', 'inline_script', 'logger', 'keyboard_response',
-            'feedback'), insert it into a parent item (usually a sequence)
-            at the given index, and open its tab.
+                           parent_item_name: str, index: int = 0,
+                           script: str | None = None) -> str:
+            """Create a new item of the given type and and insert it into a parent
+            item at the given index.
+            
+            Important:
+        
+            - To create inline_script/ inline_javascript items, use the
+              `new_inline_script` / `new_inline_javascript tools.
+            - Do not guess script syntax, but use `get_item_example` to get
+              a documented example.
             """
             return await run_on_gui_thread(
-                _new_item, item_name, item_type, parent_item_name, index)
+                _new_item, item_name, item_type, parent_item_name, index,
+                script)
+            
+        @server.tool()
+        async def new_inline_script(item_name: str, parent_item_name: str,
+                                    index: int = 0,
+                                    prepare_script: str | None = None,
+                                    run_script: str | None = None) -> str:
+            """Create a new inline_script item and insert it into a parent item
+            at the given index.
+            
+            Important: 
+        
+            - Do not guess script syntax, but use
+              `get_item_example(inline_script)` to get a documented example.
+            """
+            return await run_on_gui_thread(
+                _new_prepare_run_item, item_name, 'inline_script',
+                parent_item_name, index, prepare_script, run_script)
+            
+        @server.tool()
+        async def new_inline_javascript(item_name: str, parent_item_name: str,
+                                        index: int = 0,
+                                        prepare_script: str | None = None,
+                                        run_script: str | None = None) -> str:
+            """Create a new inline_javascript item and insert it into a parent
+            item at the given index.
+            
+            Important: 
+        
+            - Do not guess script syntax, but use
+              `get_item_example(inline_javascript)` to get a documented example.
+            """
+            return await run_on_gui_thread(
+                _new_prepare_run_item, item_name, 'inline_javascript',
+                parent_item_name, index, prepare_script, run_script)
 
         @server.tool()
         async def remove_item_from_parent(parent_item_name: str,
                                           index: int = 0) -> str:
-            """Remove the child item at the given index from a parent item
-            (usually a sequence), and open the parent's tab.
+            """Remove the child item at the given index from a parent item.
             """
             return await run_on_gui_thread(
                 _remove_item_from_parent, parent_item_name, index)
 
         @server.tool()
-        async def rename_item(from_item_name: str, to_item_name: str,
-                              script: str | None = None) -> str:
-            """Rename an item. Optionally pass a script to immediately
-            initialize the item's content after renaming (same format as
-            update_item_script).
-            """
+        async def rename_item(from_item_name: str, to_item_name: str) -> str:
+            """Rename an item."""
             return await run_on_gui_thread(
-                _rename_item, from_item_name, to_item_name, script)
+                _rename_item, from_item_name, to_item_name)
 
         @server.tool()
         async def add_existing_item_to_parent(item_name: str,
                                               parent_item_name: str,
                                               index: int = 0) -> str:
-            """Insert an existing item into a parent item (usually a
-            sequence) at the given index, and open the item's tab.
+            """Insert an existing item into a parent item at the given index.
             """
             return await run_on_gui_thread(
                 _add_existing_item_to_parent, item_name, parent_item_name,
@@ -353,14 +403,27 @@ def make_mcp(extension):
 
         @server.tool()
         async def update_item_script(item_name: str, script: str) -> str:
-            """Update the script of an item. For 'inline_script' items,
-            include '# START_PREPARE_PHASE' and '# START_RUN_PHASE' markers
-            around the Python code. For 'inline_javascript' items, use
-            '// START_PREPARE_PHASE' and '// START_RUN_PHASE'. For all other
-            items, provide OpenSesame script.
-            """
+            """Update the script of an item."""
             return await run_on_gui_thread(
                 _update_item_script, item_name, script)
+                
+        @server.tool()
+        async def update_inline_script(item_name: str, prepare_script: str,
+                                       run_script: str) -> str:
+            """Update the Python script for the prepare and run phases of an
+            inline_script item.
+            """
+            return await run_on_gui_thread(
+                _update_prepare_run_item, item_name, prepare_script, run_script)
+            
+        @server.tool()
+        async def update_inline_javascript(item_name: str, prepare_script: str,
+                                           run_script: str) -> str:
+            """Update the JavaScript for the prepare and run phases of an
+            inline_javascript item.
+            """
+            return await run_on_gui_thread(
+                _update_prepare_run_item, item_name, prepare_script, run_script)
 
         @server.tool()
         async def update_loop_table(item_name: str,
@@ -377,7 +440,8 @@ def make_mcp(extension):
                                            index: int = 0,
                                            run_if: str = 'True') -> str:
             """Set the run-if expression of the child at the given index of a
-            sequence item. The default 'True' means the child always runs.
+            sequence item. The run-if statement must be a str containing a valid
+            Python expression. The default 'True' means the child always runs.
             """
             return await run_on_gui_thread(
                 _update_run_if_expression, parent_sequence_name, index,
@@ -386,7 +450,7 @@ def make_mcp(extension):
         @server.tool()
         async def set_global_var(var_name: str, value: str) -> str:
             """Set a global experiment variable, e.g. var_name='subject_nr',
-            value='1'.
+            value=1.
             """
             return await run_on_gui_thread(_set_global_var, var_name, value)
 
@@ -404,7 +468,26 @@ def make_mcp(extension):
             not be parsed.
             """
             return await run_on_gui_thread(_update_general_script, script)
-
+            
+        @server.tool()
+        async def get_item_example(item_type: str) -> str:
+            """Get example syntax documentation for an item type."""
+            if item_type == 'inline_script':
+                ext = 'py'
+            elif item_type == 'inline_javascript':
+                ext = 'js'
+            else:
+                ext = 'osexp'
+            try:
+                return _get_doc(f'{item_type}.{ext}')
+            except FileNotFoundError:
+                return f'Error: no example syntax documentation for {item_type}'
+                
+        @server.tool()
+        async def get_general_script_example() -> str:
+            """Get example syntax documentation for the general script."""
+            return _get_doc('osexp_syntax.osexp')
+        
         return server
 
     return inner
