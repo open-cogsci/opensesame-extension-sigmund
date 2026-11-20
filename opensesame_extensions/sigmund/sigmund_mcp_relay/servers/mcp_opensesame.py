@@ -29,6 +29,8 @@ _ = translation_context('sigmund_mcp_relay', category='extension')
 logger = logging.getLogger(__name__)
 
 ACTION_CANCELLED = 'I do not approve this action.'
+MAX_POOL_FILES = 20
+MAX_UNIQUE_VALUES = 5
 
 # ----------------------------------------------------------------------
 # Helpers. All _tool functions below MUST run on the GUI thread (they are
@@ -300,6 +302,22 @@ def _set_global_var(extension, var_name, value):
     return f'Global experiment variable {var_name} has been set to {value}.'
 
 
+def _get_item_script(extension, item_name):
+    item, error = _get_existing_item(extension, item_name)
+    if error is not None:
+        return error
+    return item.to_string()
+    
+    
+def _get_prepare_run_script(extension, item_name):
+    item, error = _get_existing_item(extension, item_name)
+    if error is not None:
+        return error
+    if '_prepare' not in item.var or '_run' not in item.var:
+        return f'Item {item_name} does not have prepare and/or run scripts.'
+    return {'prepare': item.var._prepare, 'run': item.var._run}
+
+
 def _get_general_script(extension):
     return extension.experiment.to_string()
 
@@ -311,6 +329,45 @@ def _update_general_script(extension, script):
                 'Please ask the user to review the experiment.')
     return f'An error occurred while updating the general script:\n\n{err_msg}'
     
+    
+def _get_experiment_structure(extension):
+    """Recursively builds the experiment structure from items. Right now,
+    item_name and item_type are included for all items. Children are
+    included if available. Variables are only included for loop items. Files
+    from the file pool are also included.
+    """    
+    def _item_struct(item):
+        d = {'item_name': item.name, 'item_type': item.item_type}
+        if item.item_type == 'loop':
+            d['variables'] = {}
+            for varname in item.dm.column_names:
+                unique_values = item.dm[varname].unique
+                if len(unique_values) > MAX_UNIQUE_VALUES:
+                    unique_values = unique_values[:MAX_UNIQUE_VALUES] + \
+                        [_('(… {} more unique values not shown)').format(
+                            len(unique_values) - MAX_UNIQUE_VALUES)]
+                d['variables'][varname] = unique_values
+        if item.direct_children():
+            d['children'] = [
+                _item_struct(extension.item_store[child])
+                for child in item.direct_children()
+            ]
+        return d
+
+    exp_struct = _item_struct(
+        extension.item_store[extension.experiment.var.start]
+    )
+    pool_files = extension.pool.files()
+    if len(pool_files) > MAX_POOL_FILES:
+        n_hidden = len(pool_files) - MAX_POOL_FILES
+        pool_files = pool_files[:MAX_POOL_FILES] + \
+            [_('(… {} more files not shown)').format(n_hidden)]
+    exp_struct['file_pool'] = pool_files
+    exp_struct['global_vars'] = {
+        key: val for key, val in extension.experiment.var.items()
+    }
+    return exp_struct    
+
 
 def _get_doc(path, **kwargs):
     return Template((Path(__file__).parent / 'docs' / path).read_text()).render(kwargs)
@@ -345,9 +402,8 @@ def make_mcp(extension):
     def inner():
         instructions = _get_doc('instructions.md',
                 available_item_types=_available_item_types(extension))
-        print(instructions)
         server = MCPServer('opensesame', instructions=instructions)
-
+    
         @server.tool()
         async def new_item(item_name: str, item_type: str,
                            parent_item_name: str, index: int = 0,
@@ -476,24 +532,45 @@ def make_mcp(extension):
             value=1.
             """
             return await run_on_gui_thread(_set_global_var, var_name, value)
-
-        @server.tool()
-        async def get_general_script() -> str:
-            """Return the general script: the full experiment as OpenSesame
-            script.
-            """
-            return await run_on_gui_thread(_get_general_script)
-
+            
         @server.tool()
         async def update_general_script(script: str) -> str:
             """Replace the entire experiment with the given general script
             (OpenSesame script). Returns an error message if the script could
             not be parsed.
             """
-            return await run_on_gui_thread(_update_general_script, script)
+            return await run_on_gui_thread(_update_general_script, script)            
+            
+        # The tools below are not run on the GUI thread
+
+        @server.tool()
+        def get_item_script(item_name: str) -> str:
+            """Return the script for a given item."""
+            return _get_item_script(extension, item_name)
             
         @server.tool()
-        async def get_item_example(item_type: str) -> str:
+        def get_inline_script(item_name: str) -> dict:
+            """Return a dict with prepare and run keys containing the script for
+            a given inline_script item.
+            """
+            return _get_prepare_run_script(extension, item_name)
+
+        @server.tool()
+        def get_inline_javascript(item_name: str) -> dict:
+            """Return a dict with prepare and run keys containing the script for
+            a given inline_javascript item.
+            """
+            return _get_prepare_run_script(extension, item_name)
+            
+        @server.tool()
+        def get_general_script() -> str:
+            """Return the general script: the full experiment as OpenSesame
+            script.
+            """
+            return _get_general_script(extension)
+            
+        @server.tool()
+        def get_item_example(item_type: str) -> str:
             """Get example syntax documentation for an item type."""
             if item_type == 'inline_script':
                 ext = 'py'
@@ -507,10 +584,18 @@ def make_mcp(extension):
                 return f'Error: no example syntax documentation for {item_type}'
                 
         @server.tool()
-        async def get_general_script_example() -> str:
+        def get_general_script_example() -> str:
             """Get example syntax documentation for the general script."""
             return _get_doc('osexp_syntax.osexp')
         
+        @server.tool()
+        def get_current_experiment_structure() -> dict:
+            """Get an overview of the experiment is at it currently is: item
+            names and types, and variables defined by loop items. Call this tool
+            whenever you're unsure about the current state.
+            """
+            return _get_experiment_structure(extension)
+            
         return server
 
     return inner

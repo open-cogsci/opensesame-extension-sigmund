@@ -26,7 +26,11 @@ EXPECTED_TOOLS = {
     'update_loop_table',
     'update_run_if_expression',
     'get_item_example',
-    'get_general_script_example'
+    'get_general_script_example',
+    'get_item_script',
+    'get_inline_script',
+    'get_inline_javascript',
+    'get_current_experiment_structure'
 }
 
 
@@ -79,34 +83,6 @@ class check_registry(unittest.TestCase):
         # Each factory call yields a fresh server, one per relay session.
         server2 = mcp_opensesame.make_mcp(None)()
         self.assertIsNot(server, server2)
-
-
-class check_markers(unittest.TestCase):
-
-    """
-    desc:
-        Checks the parsing of the phase markers for inline scripts and
-        inline JavaScript, which allow a single script string to be split
-        into a prepare and a run phase.
-    """
-    def check_phase_pattern(self, pattern, marker):
-
-        print('Checking %s markers' % marker)
-        match = pattern.search(marker)
-        self.assertIsNotNone(match)
-        self.assertEqual(match.group(1).strip(), 'a = 1')
-        self.assertEqual(match.group(2).strip(), 'b = 2')
-        # No markers at all
-        self.assertIsNone(pattern.search('a = 1\nb = 2'))
-
-    def runTest(self):
-
-        self.check_phase_pattern(
-            mcp_opensesame._INLINE_SCRIPT_PATTERN,
-            '# START_PREPARE_PHASE\na = 1\n# START_RUN_PHASE\nb = 2\n')
-        self.check_phase_pattern(
-            mcp_opensesame._INLINE_JAVASCRIPT_PATTERN,
-            '// START_PREPARE_PHASE\na = 1\n// START_RUN_PHASE\nb = 2\n')
 
 
 if __name__ == '__main__':

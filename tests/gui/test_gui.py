@@ -16,6 +16,7 @@ import unittest
 # (offscreen) display, so that no real X server or Wayland session is
 # required. This must be configured before qtpy imports Qt.
 import os
+import json
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 os.environ.setdefault('QTWEBENGINE_DISABLE_SANDBOX', '1')
 from config.harness import harness
@@ -84,6 +85,9 @@ class check_tools(unittest.TestCase):
         res = call('update_item_script', item_name='my_sketchpad2',
                    script='draw textline x=0 y=0 text="after"')
         self.assertIn('after', h.items['my_sketchpad2'].to_string())
+        # --- get item scripts ---
+        res = call('get_item_script', item_name='my_sketchpad2')
+        self.assertIn('after', res)
         # --- new inline_script ---
         res = call('new_inline_script', item_name='my_inline_script',
                    parent_item_name='experiment',
@@ -99,6 +103,11 @@ class check_tools(unittest.TestCase):
         res = call('update_inline_script', item_name='my_sketchpad',
                    prepare_script='y = 0', run_script='print(y)')
         self.assertIn('not a valid item type', res)
+        # --- get inline_script ---
+        res = call('get_inline_script', item_name='my_inline_script')
+        res = json.loads(res)
+        self.assertEqual(res['prepare'], 'y = 0')
+        self.assertEqual(res['run'], 'print(y)')
         # --- new inline_javascript ---
         res = call('new_inline_javascript', item_name='my_inline_javascript',
                    parent_item_name='experiment',
@@ -111,6 +120,11 @@ class check_tools(unittest.TestCase):
                    prepare_script='y = 0', run_script='console.log(y)')
         self.assertIn('y = 0', h.items['my_inline_javascript'].var._prepare)
         self.assertIn('console.log(y)', h.items['my_inline_javascript'].var._run)
+        # --- get inline_javascript ---
+        res = call('get_inline_javascript', item_name='my_inline_javascript')
+        res = json.loads(res)
+        self.assertEqual(res['prepare'], 'y = 0')
+        self.assertEqual(res['run'], 'console.log(y)')        
         # --- rename_item, optionally with an initializing script ---
         result = call('rename_item', from_item_name='my_sketchpad2',
                       to_item_name='my_renamed')
@@ -207,6 +221,9 @@ class check_tools(unittest.TestCase):
         self.assertIn('Error:',
                       call('get_item_example', item_type='fake_item_type'))
         self.assertIn('define', call('get_general_script_example'))
+        res = call('get_current_experiment_structure')
+        res = json.loads(res)
+        self.assertEqual(res['item_name'], 'experiment')
 
 
 class check_action_review(unittest.TestCase):

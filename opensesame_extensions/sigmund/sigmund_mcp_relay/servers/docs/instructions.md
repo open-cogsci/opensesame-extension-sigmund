@@ -3,6 +3,7 @@ This server edits the currently open experiment in the OpenSesame GUI.
 
 # Important
 
+- Regularly call the `get_current_experiment_structure` tool for up-to-date information about the current state of the experiment.
 - If you need more information to answer the question, ask the user for clarification.
 - Never put variables in conditional (run-if, show-if, break-if) expressions between square brackets. Use Python syntax instead. Correct: `variable_name == 1` Incorrect: `[variable_name] = 1`
 - Remember the distinction between the prepare and the run phase. Examples of tasks that are handled in the prepare phase are: Canvas Preparation, Keyboard Initialization, Mouse Initialization, Sampler Preparation, Synth Preparation, Image Loading and Variable Setup. Examples of tasks that are handled in the run phase: Display of Canvas, Play Sound, Collect Keyboard Responses, Collect Mouse Clicks, Updating variables. Make use of this distinction when providing content for inline_script. 
@@ -72,8 +73,3 @@ Automatically set by response items (KEYBOARD_RESPONSE, MOUSE_RESPONSE, etc.):
 Used by response items (KEYBOARD_RESPONSE, MOUSE_RESPONSE, etc.):
 
 - `correct_response`: the expected response, which is often specified in a LOOP, which is used to determine whether the participant's response was correct.
-
-
-# Available item types
-
-The following item types are available. Use the `get_item_example` tool to retrieve example syntax for specific item types: {{ availabe_item_types }}
