@@ -33,6 +33,10 @@ class SigmundMcpRelay(BaseExtension):
                 self._relay_widget.disconnect_agent()
             except Exception:
                 logger.exception('failed to stop the MCP relay agent')
+                
+    def _switch_to_sigmund_2(self):
+        self.activate()
+        cfg.sigmund_mcp_relay_enabled = False
 
     def activate(self, *dummy):
         """Called when the extension is activated (toolbar/ menu). Toggles
@@ -53,6 +57,8 @@ class SigmundMcpRelay(BaseExtension):
             self._dock_widget = QDockWidget(_('Sigmund'), self.main_window)
             self._dock_widget.setObjectName('sigmund_mcp_relay')
             self._relay_widget = SigmundMCPRelayWidget(self._dock_widget, self)
+            self._relay_widget.switch_to_sigmund_2.connect(
+                self._switch_to_sigmund_2)
             self._dock_widget.setWidget(self._relay_widget)
             self.main_window.addDockWidget(Qt.RightDockWidgetArea,
                                            self._dock_widget)

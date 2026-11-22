@@ -80,6 +80,11 @@ Ask Sigmund to fix this
             return
         if self._sigmund_widget._current_item_name == from_name:
             self._sigmund_widget._current_item_name = to_name
+            
+    def _switch_to_sigmund_3(self):
+        self.activate()
+        cfg.sigmund_mcp_relay_enabled = True
+        self.activate()
 
     def activate(self, *dummy):
         """
@@ -106,6 +111,8 @@ Ask Sigmund to fix this
                 sigmund_widget_cls=OpenSesameSigmundWidget)
             self._sigmund_widget = self._dock_widget.sigmund_widget
             self._sigmund_widget.sigmund_extension = self
+            self._sigmund_widget.switch_to_sigmund_3.connect(
+                self._switch_to_sigmund_3)
             if settings:
                 font_size = settings.font_size
             else:

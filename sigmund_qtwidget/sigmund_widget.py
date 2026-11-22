@@ -3,7 +3,7 @@ import json
 import sys
 import traceback
 from multiprocessing import Process, Queue
-from qtpy.QtWidgets import QWidget, QVBoxLayout, QLabel
+from qtpy.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QSizePolicy
 from qtpy.QtGui import QPixmap
 from qtpy.QtCore import Qt, QTimer, Signal
 from . import websocket_server, chat_widget
@@ -32,6 +32,7 @@ class SigmundWidget(QWidget):
 
     server_state_changed = Signal(str)  # Emitted when server state changes
     token_received = Signal(str)
+    switch_to_sigmund_3 = Signal()
     chat_widget_cls = chat_widget.ChatWidget
     command_function_prefix = None
 
@@ -172,7 +173,7 @@ class SigmundWidget(QWidget):
         self._to_server_queue.put(json.dumps({
             "action": "cancel_streaming"
         }))
-
+    
     def refresh_ui(self):
         layout = self.layout()
         if layout is not None:
@@ -186,7 +187,16 @@ class SigmundWidget(QWidget):
             # Create and configure the new layout
             layout = QVBoxLayout()
             layout.setSpacing(10)
-    
+
+        # Use a small font (80% of the default font) and allow word wrapping on
+        # the button
+        self._switch_version_button = QPushButton("Try out the new Sigmund 3 (beta)!")
+        self._switch_version_button.setFlat(True)
+        font_size = self._switch_version_button.font().pointSize() * 0.8
+        self._switch_version_button.setStyleSheet(f"font-size: {font_size}pt; text-decoration: underline;")
+        self._switch_version_button.clicked.connect(self.switch_to_sigmund_3.emit)
+        layout.addWidget(self._switch_version_button)
+        
         if self._state == 'connected':
             self.chat_widget = self.chat_widget_cls(self)
             self.chat_widget.user_message_sent.connect(

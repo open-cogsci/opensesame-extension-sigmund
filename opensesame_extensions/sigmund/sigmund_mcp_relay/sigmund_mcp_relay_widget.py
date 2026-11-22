@@ -7,6 +7,7 @@ from libqtopensesame.misc.config import cfg
 from pyqt_code_editor import settings
 from .servers.mcp_opensesame import make_mcp as make_mcp_opensesame
 import logging
+from qtpy.QtWidgets import QPushButton
 logger = logging.getLogger(__name__)
 
 
@@ -20,7 +21,7 @@ class SigmundMCPRelayWidget(RelayWidget):
             parent,
             relay_url=cfg.sigmund_mcp_relay_url,
             providers=self.providers()
-        )
+        )        
         
     def _build_ui(self) -> None:
         super()._build_ui()
